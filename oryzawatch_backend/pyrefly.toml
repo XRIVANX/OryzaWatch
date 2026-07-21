@@ -1,0 +1,7 @@
+[tool.pyrefly]
+# Tell Pyrefly to check your virtual environment site-packages
+site-packages = ["c:/Users/Rivan/oryzawatch_backend/env/Lib/site-packages"]
+
+# If it still gives you trouble, you can temporarily silence the missing-import warning:
+[tool.pyrefly.errors]
+missing-import = "ignore"
