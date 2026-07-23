@@ -14,6 +14,14 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     municipality = serializers.CharField(max_length=100, required=False, allow_blank=True)
     barangay = serializers.CharField(max_length=100, required=False, allow_blank=True)
 
+    def validate_role(self, value):
+        """Block public self-registration as MAO_ADMIN — admins must be created internally."""
+        if value == 'MAO_ADMIN':
+            raise serializers.ValidationError(
+                "Admin accounts must be created by an existing administrator."
+            )
+        return value
+
     class Meta:
         model = User
         fields = ['username', 'email', 'password', 'role', 'municipality', 'barangay', 'phone_number']

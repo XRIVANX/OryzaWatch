@@ -11,6 +11,9 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+# pyrefly: ignore [missing-import]
+from decouple import config
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,7 +23,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-3w7e0kv^y0scszp8^ak9lewtk%vq6exf3@j_@i%f!+_q2n9ex@'
+SECRET_KEY = config('SECRET_KEY')
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -88,11 +92,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'oryzawatch_db',         # Ensure this matches the database name you created in Laragon/HeidiSQL
-        'USER': 'root',                  
-        'PASSWORD': 'Rivan2004',         # Updated with your actual Laragon password!
-        'HOST': '127.0.0.1',             
-        'PORT': '3306',                  
+        'NAME': config('DB_NAME'),
+        'USER': config('DB_USER'),
+        'PASSWORD': config('DB_PASSWORD'),
+        'HOST': config('DB_HOST', default='127.0.0.1'),
+        'PORT': config('DB_PORT', default='3306'),
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         }
@@ -165,10 +169,11 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # Token valid for 24 hours during dev
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),  # Short-lived for security
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': False,
+    'ROTATE_REFRESH_TOKENS': True,       # Issue a new refresh token on every refresh
+    'BLACKLIST_AFTER_ROTATION': True,    # Invalidate old refresh tokens
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
-    'AUTH_HEADER_TYPES': ('Bearer',),            # React will send tokens as "Bearer <token>"
+    'AUTH_HEADER_TYPES': ('Bearer',),    # React will send tokens as "Bearer <token>"
 }

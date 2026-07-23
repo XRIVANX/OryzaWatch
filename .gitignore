@@ -13,6 +13,7 @@ dist/
 build/
 .env
 .env.local
+oryzawatch_backend/.env
 
 # OS
 .DS_Store
