@@ -1,9 +1,43 @@
 from rest_framework import serializers
 from .models import LeafScan
 
+# Upload guard rails
+MAX_IMAGE_BYTES = 5 * 1024 * 1024          # 5 MB
+MAX_IMAGE_DIMENSION = 6000                  # px per side — blocks decompression bombs
+ALLOWED_IMAGE_EXTENSIONS = ('jpg', 'jpeg', 'png', 'webp')
+
+
 class LeafScanSerializer(serializers.ModelSerializer):
     # This automatically grabs the username of whoever uploaded the picture
     reporter_username = serializers.ReadOnlyField(source='reporter.username')
+
+    def validate_image(self, image):
+        if image.size > MAX_IMAGE_BYTES:
+            raise serializers.ValidationError("Image must be 5 MB or smaller.")
+
+        ext = image.name.rsplit('.', 1)[-1].lower() if '.' in image.name else ''
+        if ext not in ALLOWED_IMAGE_EXTENSIONS:
+            raise serializers.ValidationError(
+                f"Unsupported file type. Allowed: {', '.join(ALLOWED_IMAGE_EXTENSIONS)}."
+            )
+
+        # Verify it is a real, sanely-sized raster image (defends against
+        # polyglots and pixel-flood decompression bombs).
+        try:
+            from PIL import Image
+            image.seek(0)
+            with Image.open(image) as img:
+                width, height = img.size
+        except Exception:
+            raise serializers.ValidationError("Uploaded file is not a valid image.")
+        finally:
+            image.seek(0)
+
+        if width > MAX_IMAGE_DIMENSION or height > MAX_IMAGE_DIMENSION:
+            raise serializers.ValidationError(
+                f"Image dimensions must not exceed {MAX_IMAGE_DIMENSION}px per side."
+            )
+        return image
 
     class Meta:
         model = LeafScan

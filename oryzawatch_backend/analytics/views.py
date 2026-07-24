@@ -1,6 +1,7 @@
 from rest_framework import generics, permissions
 from .models import DiseaseHotspot
 from .serializers import DiseaseHotspotSerializer
+from .permissions import IsManagerOrReadOnly
 
 class ActiveHotspotListView(generics.ListAPIView):
     """
@@ -21,4 +22,4 @@ class HotspotDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
     queryset = DiseaseHotspot.objects.all()
     serializer_class = DiseaseHotspotSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsManagerOrReadOnly]

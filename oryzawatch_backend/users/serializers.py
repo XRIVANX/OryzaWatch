@@ -15,10 +15,14 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     barangay = serializers.CharField(max_length=100, required=False, allow_blank=True)
 
     def validate_role(self, value):
-        """Block public self-registration as MAO_ADMIN — admins must be created internally."""
-        if value == 'MAO_ADMIN':
+        """
+        Public self-registration may only create FARMER accounts.
+        Privileged roles (KAGAWAD, MAO_ADMIN) must be assigned internally by an
+        existing administrator — otherwise anyone could self-elevate.
+        """
+        if value and value != 'FARMER':
             raise serializers.ValidationError(
-                "Admin accounts must be created by an existing administrator."
+                "Privileged accounts must be created by an existing administrator."
             )
         return value
 

@@ -1,7 +1,8 @@
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, re_path
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.static import serve
 from users.views import register_user, login_user, get_user_profile
 from diagnostics.views import LeafScanCreateView, LeafScanListView 
 # Import your new analytics views here!
@@ -28,3 +29,9 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+else:
+    # Serve uploaded media on the plain-HTTP exam server even with DEBUG off.
+    # (Django's own static server; fine for the CTF host, not for real prod.)
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    ]

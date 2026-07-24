@@ -27,9 +27,12 @@ SECRET_KEY = config('SECRET_KEY')
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Driven by the .env file. Defaults to False so an unset/missing value is
+# secure-by-default. Set DEBUG=False in .env when exposing the pentest target.
+DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = []
+# Comma-separated list of hosts allowed to serve this app (e.g. "127.0.0.1,localhost").
+ALLOWED_HOSTS = [h.strip() for h in config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',') if h.strip()]
 
 
 # Application definition
@@ -45,6 +48,7 @@ INSTALLED_APPS = [
 
     # Third-party packages
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',  # Enables refresh-token blacklisting on rotation
     'corsheaders',
 
 # OryzaWatch Local Apps
@@ -102,6 +106,16 @@ DATABASES = {
         }
     }
 }
+
+
+# Cache configuration for login rate limiting and temporary lockouts
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'oryzawatch-cache',
+    }
+}
+
 
 
 # Password validation
@@ -165,8 +179,24 @@ from datetime import timedelta
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    )
+    ),
+    # IP-based rate limiting. 'anon' covers unauthenticated brute-force on
+    # login/register; the 'login' scope is applied explicitly on the auth views.
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '30/min',
+        'user': '120/min',
+        'login': '10/min',
+        'register': '5/min',
+    },
 }
+
+# Cap request/upload body sizes to blunt large-payload and image-bomb DoS.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024   # 5 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024   # 5 MB
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),  # Short-lived for security
@@ -176,4 +206,29 @@ SIMPLE_JWT = {
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),    # React will send tokens as "Bearer <token>"
+    'UPDATE_LAST_LOGIN': True,
 }
+
+# ---------------------------------------------------------------------------
+# Always-safe hardening headers. These do NOT depend on HTTPS, so they're on
+# whenever DEBUG is off (the exam target) without breaking plain-HTTP hosting.
+# ---------------------------------------------------------------------------
+if not DEBUG:
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = 'same-origin'
+    X_FRAME_OPTIONS = 'DENY'
+
+# ---------------------------------------------------------------------------
+# HTTPS-only hardening. Enable ONLY when the app is genuinely served over TLS
+# (set SECURE_SSL=True in .env behind an HTTPS proxy). Turning this on while
+# serving plain HTTP forces a 301 -> https redirect that breaks the whole app.
+# ---------------------------------------------------------------------------
+SECURE_SSL = config('SECURE_SSL', default=False, cast=bool)
+if SECURE_SSL:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
