@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import API from '../../services/api';
 import TextInput from '../input/TextInput';
 import Password from '../input/Password';

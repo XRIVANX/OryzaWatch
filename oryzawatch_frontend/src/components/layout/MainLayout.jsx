@@ -1,4 +1,4 @@
-import React from 'react';
+
 import OryzaLogo from '../ui/OryzaLogo';
 
 const NAV_ITEMS = [

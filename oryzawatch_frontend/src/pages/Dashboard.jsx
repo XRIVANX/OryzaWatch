@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 const STATS = [
   { value: '2',   label: 'Active Hotspots',   sub: '↑ +1 this week',  subColor: '#dc2626' },

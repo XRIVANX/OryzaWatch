@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 
 const ImageInput = ({ label, onImageSelect, required = true }) => {
     const [preview, setPreview] = useState(null);

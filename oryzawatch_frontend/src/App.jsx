@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import LoginForm  from './components/layout/LoginForm';
 import MainLayout from './components/layout/MainLayout';
 import Dashboard  from './pages/Dashboard';
@@ -37,6 +37,7 @@ function App() {
           setVerifying(false);
         });
     } else {
+// eslint-disable-next-line react-hooks/set-state-in-effect
       setVerifying(false);
     }
   }, []);
@@ -111,7 +112,7 @@ const keyframes = `
 if (styleSheet) {
   try {
     styleSheet.insertRule(keyframes, styleSheet.cssRules.length);
-  } catch (e) {}
+  } catch { /* ignore */ }
 }
 
 export default App;

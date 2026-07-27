@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 const FARMERS = [
   { id: 'F-102', name: 'Juan Dela Cruz',  barangay: 'Ising',    status: 'Critical',   disease: 'BLB',        lastReport: 'Today, 09:14 AM' },

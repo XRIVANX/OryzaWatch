@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import API from '../../services/api';
 import ImageInput from '../input/ImageInput';
 import TextInput from '../input/TextInput';

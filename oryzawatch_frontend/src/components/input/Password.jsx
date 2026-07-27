@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 const Password = ({ label, name, value, onChange, placeholder, required = true }) => {
     return (

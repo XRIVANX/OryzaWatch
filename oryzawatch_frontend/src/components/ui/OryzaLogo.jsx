@@ -1,4 +1,4 @@
-import React from 'react';
+
 
 const OryzaLogo = ({ size = 32, showText = false }) => {
   if (showText) {
