@@ -160,6 +160,7 @@ const LoginForm = ({ onLoginSuccess }) => {
                                     <option value="KAGAWAD">SK / Agri-Kagawad</option>
                                     <option value="MAO_ADMIN">MAO Admin</option>
                                 </select>
+                                <span style={s.fieldHint}>Note: Self-registration creates Farmer accounts. Privileged accounts are assigned by MAO Admins.</span>
                             </div>
 
                             <div style={s.group}>
@@ -322,6 +323,11 @@ const s = {
         outline: 'none',
         width: '100%',
         boxSizing: 'border-box',
+    },
+    fieldHint: {
+        fontSize: '11px',
+        color: 'var(--text-muted)',
+        marginTop: '2px',
     },
     btn: {
         marginTop: '8px',
