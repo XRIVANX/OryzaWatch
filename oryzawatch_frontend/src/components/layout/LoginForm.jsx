@@ -201,10 +201,10 @@ const LoginForm = ({ onLoginSuccess }) => {
 
                 <div style={s.toggleContainer}>
                     <span style={s.toggleText}>
-                        {isRegister ? 'Already have an account? ' : " "}
+                        {isRegister ? 'Already have an account? ' : "Don't have an account? "}
                     </span>
-                    <button onClick={toggleMode} style={s.toggleLinkBtn}>
-                        {isRegister ? '' : ''}
+                    <button type="button" onClick={toggleMode} style={s.toggleLinkBtn}>
+                        {isRegister ? 'Sign In' : 'Register'}
                     </button>
                 </div>
 
