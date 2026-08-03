@@ -1,7 +1,7 @@
 import React from 'react';
 import s from '../styles/dashboard.styles';
-import { STATS, ACTIVITY, WEATHER } from '../data/dashboard.data';
-import type { StatItem, ActivityItem, WeatherItem } from '../data/dashboard.data';
+import { STATS, ACTIVITY, WEATHER } from '../data/dashbaord.data';
+import type { StatItem, ActivityItem, WeatherItem } from '../data/dashbaord.data';
 
 // ─── AlertChip ───────────────────────────────────────────────────────────────
 

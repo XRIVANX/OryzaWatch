@@ -1,5 +1,9 @@
 import type { CSSProperties } from 'react';
 
+// Using `as CSSProperties` per-object is the correct pattern —
+// it narrows string literals like 'column', 'uppercase' to their
+// exact CSS types instead of widening them to string.
+
 const s: Record<string, CSSProperties> = {
   // ── Layout shells ─────────────────────────────────────────────────────────
   wrapper:  { display: 'flex', flexDirection: 'column', height: '100%' },
