@@ -1,18 +1,9 @@
-import { useState } from 'react';
-import { s } from '../styles/diseasemap.styles.jsx';
+import React, { useState } from 'react';
+import s from '../styles/diseasemap.styles.jsx';
+import { TABS, LEGEND } from '../data/diseasemap.data';
 
-const TABS = ['Carmen Rice Fields', 'Asuncion Rice Fields'];
-
-const LEGEND = [
-  { color: '#dc2626', label: 'Confirmed Hotspot (P1)' },
-  { color: '#f87171', label: '24h Forecast Zone' },
-  { color: '#fb923c', label: '48h Forecast Zone' },
-  { color: '#fbbf24', label: 'Farms at Risk' },
-  { color: '#86efac', label: 'Safe Farms (Low Risk)' },
-];
-
-const DiseaseMap = () => {
-  const [activeTab, setActiveTab] = useState(0);
+const DiseaseMap: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<number>(0);
 
   return (
     <div style={s.wrapper}>
@@ -87,7 +78,7 @@ const DiseaseMap = () => {
 };
 
 /* ── SVG Map ────────────────────────────────────────────────────── */
-const MapSVG = () => (
+const MapSVG: React.FC = () => (
   <svg viewBox="0 0 560 420" style={{ width: '100%', height: 'auto', display: 'block' }}>
     {/* Background */}
     <rect width="560" height="420" fill="#f5f8f2" rx="8" />
@@ -159,6 +150,5 @@ const MapSVG = () => (
     </g>
   </svg>
 );
-
 
 export default DiseaseMap;

@@ -1,22 +1,25 @@
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import API from '../services/api';
-import { s } from '../styles/aiscan.styles';
+import s from '../styles/aiscan.styles.jsx';
+import { RECENT_SCANS } from '../data/aiscan.data';
 
-const RECENT_SCANS = [
-  { icon: '🌿', disease: 'Rice Blast',           location: 'Brgy. Mangalcal', daysAgo: '3 days ago', confidence: 87 },
-  { icon: '🌾', disease: 'Bacterial Leaf Blight', location: 'Brgy. Ising',    daysAgo: '5 days ago', confidence: 94 },
-];
+interface ScanResult {
+  type: 'success' | 'error';
+  disease?: string;
+  confidence?: string;
+  message?: string;
+}
 
-const AIScan = () => {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [preview, setPreview]           = useState(null);
-  const [loading, setLoading]           = useState(false);
-  const [result, setResult]             = useState(null);
+const AIScan: React.FC = () => {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [preview, setPreview]           = useState<string | null>(null);
+  const [loading, setLoading]           = useState<boolean>(false);
+  const [result, setResult]             = useState<ScanResult | null>(null);
   const [coords]                        = useState({ latitude: '7.4483', longitude: '125.8094' });
-  const fileInputRef = useRef(null);
+  const fileInputRef                    = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
     setSelectedFile(file);
     setPreview(URL.createObjectURL(file));
@@ -25,7 +28,7 @@ const AIScan = () => {
 
   const handleUpload = async () => {
     if (!selectedFile) {
-      fileInputRef.current.click();
+      fileInputRef.current?.click();
       return;
     }
     setLoading(true);
@@ -43,7 +46,7 @@ const AIScan = () => {
         disease: response.data.detected_disease,
         confidence: (response.data.confidence_score * 100).toFixed(1),
       });
-    } catch (err) {
+    } catch (err: any) {
       setResult({ type: 'error', message: err.response?.data?.detail || 'Upload failed.' });
     } finally {
       setLoading(false);
@@ -120,7 +123,7 @@ const AIScan = () => {
               {loading ? 'Processing…' : (selectedFile ? 'Run AI Scan' : 'Capture Photo')}
             </button>
 
-            <button onClick={() => fileInputRef.current.click()} style={s.galleryBtn}>
+            <button onClick={() => fileInputRef.current?.click()} style={s.galleryBtn}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                 <circle cx="8.5" cy="8.5" r="1.5"/>

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import s from '../styles/alerts.styles.jsx';
 import type { Alert } from '../types';
+import { ALERTS_DATA, TYPE_STYLES } from '../data/alerts.data';
 
 
 const Alerts = () => {
-  const [alerts, setAlerts] = useState(ALERTS_DATA);
+  const [alerts, setAlerts] = useState<Alert[]>(ALERTS_DATA);
   const unread = alerts.filter(a => !a.read).length;
 
   const markAllRead = () => setAlerts(prev => prev.map(a => ({ ...a, read: true })));

@@ -64,7 +64,15 @@ const Dashboard = () => {
   );
 };
 
-const AlertChip = ({ color, bg, border, icon, label }) => (
+interface AlertChipProps {
+  color: string;
+  bg: string;
+  border: string;
+  icon: string;
+  label: string;
+}
+
+const AlertChip = ({ color, bg, border, icon, label }: AlertChipProps) => (
   <div style={{
     display: 'flex', alignItems: 'center', gap: '5px',
     background: bg, border: `1px solid ${border}`, borderRadius: '20px',
@@ -73,6 +81,7 @@ const AlertChip = ({ color, bg, border, icon, label }) => (
     <span>{icon}</span>{label}
   </div>
 );
+
 
 
 export default Dashboard;

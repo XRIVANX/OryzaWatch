@@ -49,3 +49,6 @@ const s = {
   legendDot:  { width: '12px', height: '12px', borderRadius: '3px', flexShrink: 0 },
   legendLabel:{ fontSize: '11px', color: 'var(--text-secondary)' },
 };
+
+export default s;
+

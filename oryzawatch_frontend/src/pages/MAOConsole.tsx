@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import s from '../styles/maoconsole.styles.jsx';
-import { FARMERS, STATUS_BADGE } from '../data/maoconsole.data.ts';
+import { FARMERS, STATUS_BADGE, TOTAL, PAGE_SIZE, TOTAL_PAGES } from '../data/maoconsole.data';
 
-const MAOConsole = () => {
-  const [search, setSearch]       = useState('');
-  const [currentPage, setPage]    = useState(1);
+const MAOConsole: React.FC = () => {
+  const [search, setSearch]    = useState<string>('');
+  const [currentPage, setPage] = useState<number>(1);
 
   const filtered = FARMERS.filter(f =>
     !search ||
@@ -35,7 +35,7 @@ const MAOConsole = () => {
               type="text"
               placeholder="Search farmers, ID, or barangay…"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
               style={s.searchInput}
             />
           </div>
@@ -77,7 +77,7 @@ const MAOConsole = () => {
                   </td>
                   <td style={s.td}>{f.barangay}</td>
                   <td style={s.td}>
-                    <span className={STATUS_BADGE[f.status]}>{f.status}</span>
+                    <span className={STATUS_BADGE[f.status] || 'badge'}>{f.status}</span>
                   </td>
                   <td style={s.td}>{f.disease === 'None' ? <span style={{ color: 'var(--text-muted)' }}>None</span> : f.disease}</td>
                   <td style={s.td}><span style={s.lastReport}>{f.lastReport}</span></td>
@@ -93,7 +93,7 @@ const MAOConsole = () => {
           <div style={s.pagination}>
             <span style={s.paginationInfo}>Showing 1 to {Math.min(PAGE_SIZE, filtered.length)} of {TOTAL} entries</span>
             <div style={s.paginationControls}>
-              <button style={s.pageBtn} onClick={() => setPage(p => Math.max(1, p-1))}>Prev</button>
+              <button style={s.pageBtn} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</button>
               {[1, 2, 3].map(n => (
                 <button
                   key={n}
@@ -103,93 +103,13 @@ const MAOConsole = () => {
                   {n}
                 </button>
               ))}
-              <button style={s.pageBtn} onClick={() => setPage(p => Math.min(TOTAL_PAGES, p+1))}>Next</button>
+              <button style={s.pageBtn} onClick={() => setPage(p => Math.min(TOTAL_PAGES, p + 1))}>Next</button>
             </div>
           </div>
         </div>
       </div>
     </div>
   );
-};
-
-const s = {
-  wrapper: { display: 'flex', flexDirection: 'column', height: '100%' },
-  topbar: {
-    display: 'flex', alignItems: 'center',
-    padding: '18px 28px 14px', borderBottom: '1px solid var(--border)', background: 'var(--bg-card)',
-  },
-  pageTitle:    { fontSize: '18px', fontWeight: 700 },
-  pageSubtitle: { fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' },
-
-  content: { padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 },
-
-  toolbar: { display: 'flex', alignItems: 'center', gap: '10px' },
-  searchWrap: {
-    position: 'relative', flex: 1, maxWidth: '340px',
-  },
-  searchIcon: {
-    position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)',
-    color: 'var(--text-muted)', pointerEvents: 'none',
-  },
-  searchInput: {
-    width: '100%', padding: '9px 12px 9px 36px',
-    border: '1px solid var(--border)', borderRadius: '8px',
-    fontSize: '13px', background: 'var(--bg-card)', color: 'var(--text-primary)',
-    outline: 'none',
-  },
-  toolbarRight: { display: 'flex', gap: '8px', marginLeft: 'auto' },
-  filterBtn: {
-    display: 'flex', alignItems: 'center', gap: '6px',
-    padding: '8px 14px', background: 'transparent', border: '1px solid var(--border)',
-    borderRadius: '7px', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)', cursor: 'pointer',
-  },
-  exportBtn: {
-    display: 'flex', alignItems: 'center', gap: '6px',
-    padding: '8px 14px', background: 'var(--text-primary)', color: '#fff',
-    border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: 600, cursor: 'pointer',
-  },
-
-  tableWrap: { overflow: 'hidden' },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  thead: { borderBottom: '1px solid var(--border)' },
-  th: {
-    padding: '11px 16px', textAlign: 'left',
-    fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)',
-    letterSpacing: '0.06em', textTransform: 'uppercase',
-    whiteSpace: 'nowrap',
-  },
-  tr: { borderBottom: '1px solid var(--border-light)', transition: 'background 0.1s' },
-  td: { padding: '13px 16px', fontSize: '13px', color: 'var(--text-primary)', verticalAlign: 'middle' },
-
-  farmerId: { fontWeight: 600, color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' },
-  farmerName: { display: 'flex', alignItems: 'center', gap: '8px' },
-  avatarCircle: {
-    width: '28px', height: '28px', borderRadius: '50%',
-    background: 'var(--green-light)', color: 'var(--green-dark)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: '12px', fontWeight: 700, flexShrink: 0,
-  },
-  lastReport: { color: 'var(--text-secondary)', fontSize: '12px' },
-  moreBtn: {
-    width: '28px', height: '28px', background: 'transparent', border: 'none',
-    borderRadius: '4px', cursor: 'pointer', fontSize: '18px', color: 'var(--text-muted)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-  },
-
-  pagination: {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '12px 16px', borderTop: '1px solid var(--border)',
-  },
-  paginationInfo:     { fontSize: '12px', color: 'var(--text-secondary)' },
-  paginationControls: { display: 'flex', gap: '4px', alignItems: 'center' },
-  pageBtn: {
-    padding: '5px 11px', background: 'transparent', border: '1px solid var(--border)',
-    borderRadius: '5px', fontSize: '12px', fontWeight: 500, color: 'var(--text-secondary)',
-    cursor: 'pointer',
-  },
-  pageBtnActive: {
-    background: 'var(--text-primary)', color: '#fff', borderColor: 'var(--text-primary)',
-  },
 };
 
 export default MAOConsole;

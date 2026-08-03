@@ -39,3 +39,5 @@ const s = {
   weatherLabel: { fontSize: '13px', color: 'var(--text-secondary)' },
   weatherValue: { fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 },
 };
+
+export default s;

@@ -40,3 +40,5 @@ const s = {
     border: '1px solid var(--border)', borderRadius: '6px', fontSize: '12px', fontWeight: 500, cursor: 'pointer',
   },
 };
+
+export default s;

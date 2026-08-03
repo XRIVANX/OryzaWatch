@@ -56,3 +56,5 @@ const s = {
   scanLocation: { fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' },
   scanConfidence: { fontSize: '14px', fontWeight: 700, color: 'var(--green-dark)' },
 };
+
+export default s;
