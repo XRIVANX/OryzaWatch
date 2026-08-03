@@ -1,6 +1,5 @@
-import s from '../styles/dashboard.styles';
+import s  from '../styles/dashboard.styles';
 import { STATS, ACTIVITY, WEATHER } from '../data/dashboard.data';
-
 
 
 const Dashboard = () => {
