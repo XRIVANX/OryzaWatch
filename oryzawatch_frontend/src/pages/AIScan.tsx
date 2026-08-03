@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import API from '../services/api';
+import { s } from '../styles/aiscan.styles';
 
 const RECENT_SCANS = [
   { icon: '🌿', disease: 'Rice Blast',           location: 'Brgy. Mangalcal', daysAgo: '3 days ago', confidence: 87 },
