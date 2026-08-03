@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import type { Alert, AlertSeverity } from '../types';
 
-const ALERTS_DATA = [
+const ALERTS_DATA : Array<Alert> = [
   {
     id: 1,
     type: 'critical',
@@ -46,7 +47,13 @@ const ALERTS_DATA = [
   },
 ];
 
-const TYPE_STYLES = {
+const TYPE_STYLES: Record<AlertSeverity, {
+  bg: string;
+  border: string;
+  iconBg: string;
+  iconColor: string;
+  titleColor: string;
+}> = {
   critical: {
     bg: 'var(--red-light)',
     border: 'var(--red-border)',
