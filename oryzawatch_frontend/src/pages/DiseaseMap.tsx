@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import s from '../styles/diseasemap.styles.jsx';
+import s from '../styles/diseasemap.styles';
 import { TABS, LEGEND } from '../data/diseasemap.data';
 
 const DiseaseMap: React.FC = () => {

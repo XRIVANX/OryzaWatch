@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import LoginForm  from './components/layout/LoginForm';
 import MainLayout from './components/layout/MainLayout';
 import Dashboard  from './pages/Dashboard';
@@ -9,7 +9,7 @@ import MAOConsole from './pages/MAOConsole';
 import API        from './services/api';
 import type { User } from './types';
 
-const PAGE_COMPONENTS = {
+const PAGE_COMPONENTS: Record<string, React.ReactNode> = {
   'dashboard':   <Dashboard />,
   'disease-map': <DiseaseMap />,
   'ai-scan':     <AIScan />,
@@ -17,10 +17,10 @@ const PAGE_COMPONENTS = {
   'mao-console': <MAOConsole />,
 };
 
-function App() {
+const App: React.FC = () => {
   const [user, setUser]           = useState<User | null>(null);
-  const [activePage, setActivePage] = useState('dashboard');
-  const [verifying, setVerifying]   = useState(true);
+  const [activePage, setActivePage] = useState<string>('dashboard');
+  const [verifying, setVerifying]   = useState<boolean>(true);
 
   // Run on mount to check if token exists and verify profile
   useEffect(() => {
@@ -38,7 +38,6 @@ function App() {
           setVerifying(false);
         });
     } else {
-// eslint-disable-next-line react-hooks/set-state-in-effect
       setVerifying(false);
     }
   }, []);
@@ -61,7 +60,7 @@ function App() {
   return (
     <>
       {!user ? (
-        <LoginForm onLoginSuccess={(userData) => setUser(userData)} />
+        <LoginForm onLoginSuccess={(userData: User) => setUser(userData)} />
       ) : (
         <MainLayout
           user={user}
@@ -74,9 +73,9 @@ function App() {
       )}
     </>
   );
-}
+};
 
-const styles = {
+const styles: Record<string, React.CSSProperties> = {
   loadingScreen: {
     display: 'flex',
     flexDirection: 'column',

@@ -1,8 +1,26 @@
-import s  from '../styles/dashboard.styles';
+import React from 'react';
+import s from '../styles/dashboard.styles';
 import { STATS, ACTIVITY, WEATHER } from '../data/dashboard.data';
 
+interface AlertChipProps {
+  color: string;
+  bg: string;
+  border: string;
+  icon: string;
+  label: string;
+}
 
-const Dashboard = () => {
+const AlertChip: React.FC<AlertChipProps> = ({ color, bg, border, icon, label }) => (
+  <div style={{
+    display: 'flex', alignItems: 'center', gap: '5px',
+    background: bg, border: `1px solid ${border}`, borderRadius: '20px',
+    padding: '4px 12px', fontSize: '12px', fontWeight: 600, color,
+  }}>
+    <span>{icon}</span>{label}
+  </div>
+);
+
+const Dashboard: React.FC = () => {
   return (
     <div style={s.wrapper}>
       {/* Top bar */}
@@ -63,25 +81,5 @@ const Dashboard = () => {
     </div>
   );
 };
-
-interface AlertChipProps {
-  color: string;
-  bg: string;
-  border: string;
-  icon: string;
-  label: string;
-}
-
-const AlertChip = ({ color, bg, border, icon, label }: AlertChipProps) => (
-  <div style={{
-    display: 'flex', alignItems: 'center', gap: '5px',
-    background: bg, border: `1px solid ${border}`, borderRadius: '20px',
-    padding: '4px 12px', fontSize: '12px', fontWeight: 600, color,
-  }}>
-    <span>{icon}</span>{label}
-  </div>
-);
-
-
 
 export default Dashboard;

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import API from '../services/api';
-import s from '../styles/aiscan.styles.jsx';
+import s from '../styles/aiscan.styles';
 import { RECENT_SCANS } from '../data/aiscan.data';
 
 interface ScanResult {

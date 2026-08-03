@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import s from '../styles/maoconsole.styles.jsx';
+import s from '../styles/maoconsole.styles';
 import { FARMERS, STATUS_BADGE, TOTAL, PAGE_SIZE, TOTAL_PAGES } from '../data/maoconsole.data';
 
 const MAOConsole: React.FC = () => {

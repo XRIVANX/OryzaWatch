@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import s from '../styles/alerts.styles.jsx';
+import s from '../styles/alerts.styles';
 import type { Alert } from '../types';
 import { ALERTS_DATA, TYPE_STYLES } from '../data/alerts.data';
 
