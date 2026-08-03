@@ -1,6 +1,9 @@
 import React from 'react';
 import s from '../styles/dashboard.styles';
 import { STATS, ACTIVITY, WEATHER } from '../data/dashboard.data';
+import type { StatItem, ActivityItem, WeatherItem } from '../data/dashboard.data';
+
+// ─── AlertChip ───────────────────────────────────────────────────────────────
 
 interface AlertChipProps {
   color: string;
@@ -20,9 +23,12 @@ const AlertChip: React.FC<AlertChipProps> = ({ color, bg, border, icon, label })
   </div>
 );
 
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+
 const Dashboard: React.FC = () => {
   return (
     <div style={s.wrapper}>
+
       {/* Top bar */}
       <div style={s.topbar}>
         <div>
@@ -37,9 +43,10 @@ const Dashboard: React.FC = () => {
 
       {/* Content */}
       <div style={s.content}>
-        {/* Stat cards */}
+
+        {/* Stat cards — StatItem type removes the implicit `any` on `stat` */}
         <div style={s.statRow}>
-          {STATS.map((stat, i) => (
+          {STATS.map((stat: StatItem, i: number) => (
             <div key={i} className="card" style={s.statCard}>
               <div style={s.statValue}>{stat.value}</div>
               <div style={s.statLabel}>{stat.label}</div>
@@ -50,11 +57,12 @@ const Dashboard: React.FC = () => {
 
         {/* Bottom two panels */}
         <div style={s.panelRow}>
-          {/* Recent Activity */}
+
+          {/* Recent Activity — ActivityItem type removes implicit `any` on `a` */}
           <div className="card" style={s.activityCard}>
             <div style={s.sectionLabel}>RECENT ACTIVITY</div>
             <div style={s.activityList}>
-              {ACTIVITY.map((a, i) => (
+              {ACTIVITY.map((a: ActivityItem, i: number) => (
                 <div key={i} style={s.activityItem}>
                   <span style={{ ...s.activityDot, background: a.color }} />
                   <span style={s.activityText}>{a.text}</span>
@@ -64,11 +72,12 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Weather */}
+          {/* Weather — WeatherItem type removes implicit `any` on `w`,
+              and valueStyle: CSSProperties makes the spread always valid */}
           <div className="card" style={s.weatherCard}>
             <div style={s.sectionLabel}>WEATHER · ASUNCION</div>
             <div style={s.weatherList}>
-              {WEATHER.map((w, i) => (
+              {WEATHER.map((w: WeatherItem, i: number) => (
                 <div key={i} style={s.weatherRow}>
                   <span style={s.weatherLabel}>{w.label}</span>
                   <span style={{ ...s.weatherValue, ...w.valueStyle }}>{w.value}</span>
@@ -76,8 +85,10 @@ const Dashboard: React.FC = () => {
               ))}
             </div>
           </div>
+
         </div>
       </div>
+
     </div>
   );
 };
