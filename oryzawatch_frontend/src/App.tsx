@@ -7,6 +7,10 @@ import AIScan     from './pages/AIScan';
 import Alerts     from './pages/Alerts';
 import MAOConsole from './pages/MAOConsole';
 import API        from './services/api';
+import type { User } from './types';
+
+
+const [user, setUser] = useState<User | null>(null);
 
 const PAGE_COMPONENTS = {
   'dashboard':   <Dashboard />,
