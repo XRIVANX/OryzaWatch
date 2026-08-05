@@ -9,6 +9,7 @@ from diagnostics.views import LeafScanCreateView, LeafScanListView
 from analytics.views import ActiveHotspotListView, HotspotDetailView
 from rest_framework_simplejwt.views import TokenRefreshView
 from alerts.views import AlertListView, AlertMarkReadView
+from users.views import register_user, login_user, get_user_profile, admin_exists
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -18,6 +19,7 @@ urlpatterns = [
     path('api/auth/login/', login_user, name='auth_login'),
     path('api/auth/profile/', get_user_profile, name='user_profile'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/auth/admin-exists/', admin_exists, name='admin_exists'),
     
     # Core Diagnostics Scan Endpoints
     path('api/diagnostics/upload/', LeafScanCreateView.as_view(), name='upload_scan'),
