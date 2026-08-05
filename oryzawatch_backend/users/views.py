@@ -115,10 +115,6 @@ def get_user_profile(request):
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def admin_exists(request):
-    """
-    Returns { "admin_exists": true/false }.
-    Called by the registration form to decide whether to show the MAO_ADMIN role option.
-    No credentials required — this reveals only a boolean, not any user data.
-    """
+
     exists = User.objects.filter(role='MAO_ADMIN').exists()
     return Response({"admin_exists": exists})
