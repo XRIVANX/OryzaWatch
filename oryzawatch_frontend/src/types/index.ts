@@ -1,16 +1,34 @@
 // ─── Auth & User ─────────────────────────────────────────────────────────────
+// Role values MUST match Django's ROLE_CHOICES exactly:
+//   ('FARMER', 'Farmer') | ('KAGAWAD', 'SK / Agri-Kagawad') | ('MAO_ADMIN', '...')
+
+export type UserRole = 'FARMER' | 'KAGAWAD' | 'MAO_ADMIN';
 
 export interface User {
   id: number;
   username: string;
   email: string;
-  role: 'admin' | 'agronomist' | 'farmer';
-  barangay?: string;
+  role: UserRole;
+  municipality: string;
+  barangay: string;
+  phone_number?: string;
+}
+
+// ─── Registration ─────────────────────────────────────────────────────────────
+
+export interface RegisterPayload {
+  username: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  municipality: string;
+  barangay: string;
+  phone_number?: string;
 }
 
 // ─── Alerts ──────────────────────────────────────────────────────────────────
 
-export type AlertSeverity = 'critical' | 'warning' | 'info' | 'success';
+export type AlertSeverity = 'CRITICAL' | 'WARNING' | 'INFO';
 
 export interface AlertAction {
   label: string;
@@ -36,23 +54,19 @@ export interface DiseaseDetection {
   id: number;
   farmId: string;
   disease: string;
-  confidence: number;        // 0–100
-  detectedAt: string;        // ISO date string
+  confidence: number;
+  detectedAt: string;
   status: DiseaseStatus;
-  location: {
-    barangay: string;
-    lat: number;
-    lng: number;
-  };
+  location: { barangay: string; lat: number; lng: number };
 }
 
-// ─── Farm / Map ───────────────────────────────────────────────────────────────
+// ─── Farm / Map ──────────────────────────────────────────────────────────────
 
 export interface Farm {
   id: string;
   name: string;
   barangay: string;
-  area: number;              // hectares
+  area: number;
   status: DiseaseStatus;
   lat: number;
   lng: number;
