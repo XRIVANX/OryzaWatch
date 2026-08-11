@@ -3,7 +3,7 @@ import type { Alert, AlertSeverity } from '../types';
 export const ALERTS_DATA: Alert[] = [
   {
     id: 1,
-    type: 'critical',
+    type: 'CRITICAL',
     icon: '⚠',
     title: 'Bacterial Leaf Blight Detected',
     time: '10 minutes ago',
@@ -16,7 +16,7 @@ export const ALERTS_DATA: Alert[] = [
   },
   {
     id: 2,
-    type: 'warning',
+    type: 'WARNING',
     icon: '💧',
     title: 'High Humidity Advisory',
     time: '2 hours ago',
@@ -26,7 +26,7 @@ export const ALERTS_DATA: Alert[] = [
   },
   {
     id: 3,
-    type: 'info',
+    type: 'INFO',
     icon: '💨',
     title: 'Wind Shift Notification',
     time: '5 hours ago',
@@ -36,7 +36,7 @@ export const ALERTS_DATA: Alert[] = [
   },
   {
     id: 4,
-    type: 'success',
+    type: 'SUCCESS',
     icon: '✓',
     title: 'Treatment Success',
     time: '1 day ago',
@@ -53,28 +53,28 @@ export const TYPE_STYLES: Record<AlertSeverity, {
   iconColor: string;
   titleColor: string;
 }> = {
-  critical: {
+  CRITICAL: {
     bg: 'var(--red-light)',
     border: 'var(--red-border)',
     iconBg: '#fca5a5',
     iconColor: '#991b1b',
     titleColor: '#991b1b',
   },
-  warning: {
+  WARNING: {
     bg: 'var(--orange-light)',
     border: 'var(--orange-border)',
     iconBg: '#fcd34d',
     iconColor: '#92400e',
     titleColor: '#92400e',
   },
-  info: {
+  INFO: {
     bg: '#eff6ff',
     border: '#bfdbfe',
     iconBg: '#93c5fd',
     iconColor: '#1e3a8a',
     titleColor: '#1e40af',
   },
-  success: {
+  SUCCESS: {
     bg: 'var(--green-status-light)',
     border: 'var(--green-status-border)',
     iconBg: '#86efac',

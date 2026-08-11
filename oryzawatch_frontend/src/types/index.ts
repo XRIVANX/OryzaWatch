@@ -28,7 +28,7 @@ export interface RegisterPayload {
 
 // ─── Alerts ──────────────────────────────────────────────────────────────────
 
-export type AlertSeverity = 'CRITICAL' | 'WARNING' | 'INFO';
+export type AlertSeverity = 'CRITICAL' | 'WARNING' | 'INFO' | 'SUCCESS';
 
 export interface AlertAction {
   label: string;
