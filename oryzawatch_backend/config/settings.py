@@ -32,7 +32,8 @@ SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
 # Comma-separated list of hosts allowed to serve this app (e.g. "127.0.0.1,localhost").
-ALLOWED_HOSTS = [h.strip() for h in config('ALLOWED_HOSTS', default='127.0.0.1,localhost').split(',') if h.strip()]
+ALLOWED_HOSTS = ['*']  # Allow LAN connections from mobile app in development
+
 
 
 # Application definition
@@ -157,7 +158,8 @@ STATIC_URL = 'static/'
 # Tell Django to use your upcoming custom user role model instead of the default one
 AUTH_USER_MODEL = 'users.User'
 
-# Allow React local development environments to request your endpoints securely
+# Allow React local development environments and mobile apps to request endpoints securely
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",   # Standard React dev port
     "http://localhost:5173",   # Vite React dev port
