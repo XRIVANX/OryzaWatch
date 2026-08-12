@@ -1,13 +1,13 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// MapScreen — Disease Hotspot Map
-// Shows hotspot markers on react-native-maps matching the mockup.
+// MapScreen — Leaflet.js Disease Hotspot Map
+// Renders OpenStreetMap / Esri Satellite map with Leaflet.js via react-native-webview
 // ─────────────────────────────────────────────────────────────────────────────
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import MapView, { Marker, Callout, PROVIDER_DEFAULT } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 
@@ -17,15 +17,10 @@ import { alertsApi } from '../../api/alerts';
 import { COLORS, HOTSPOT_STATUS, DISEASE_LABELS } from '../../utils/constants';
 import type { DiseaseHotspot } from '../../types';
 
-// Default center: Davao del Norte, Philippines
-const DEFAULT_REGION = {
-  latitude: 7.3047,
-  longitude: 125.6839,
-  latitudeDelta: 0.15,
-  longitudeDelta: 0.15,
-};
+const DEFAULT_CENTER = { latitude: 7.3047, longitude: 125.6839 }; // Davao del Norte
 
 export default function MapScreen() {
+  const webViewRef = useRef<WebView>(null);
   const [hotspots, setHotspots] = useState<DiseaseHotspot[]>([]);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,7 +38,6 @@ export default function MapScreen() {
 
   useEffect(() => {
     (async () => {
-      // Request location permission
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
@@ -54,7 +48,91 @@ export default function MapScreen() {
     })();
   }, [fetchData]);
 
-  const markerColor = (status: string) => HOTSPOT_STATUS[status]?.color ?? COLORS.info;
+  // Generate Leaflet.js HTML with Esri World Imagery Satellite Tiles + Hotspot Markers
+  const generateLeafletHTML = () => {
+    const lat = userLocation ? userLocation.latitude : DEFAULT_CENTER.latitude;
+    const lng = userLocation ? userLocation.longitude : DEFAULT_CENTER.longitude;
+
+    const markersScript = hotspots
+      .map((h) => {
+        const color = h.status === 'CRITICAL' ? '#dc2626' : h.status === 'AT_RISK' ? '#f97316' : '#2563eb';
+        const label = DISEASE_LABELS[h.scan.detected_disease] || h.scan.detected_disease;
+        const statusLabel = HOTSPOT_STATUS[h.status]?.label ?? h.status;
+
+        return `
+          (function() {
+            var icon = L.divIcon({
+              className: 'custom-pin',
+              html: '<div style="background-color:${color}; width:24px; height:24px; border-radius:50%; border:3px solid white; box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>',
+              iconSize: [24, 24],
+              iconAnchor: [12, 12]
+            });
+            var marker = L.marker([${h.scan.latitude}, ${h.scan.longitude}], { icon: icon }).addTo(map);
+            marker.bindPopup(\`
+              <div style="font-family:sans-serif; padding:4px;">
+                <div style="font-weight:bold; font-size:14px; color:#0f172a; margin-bottom:4px;">${label}</div>
+                <div style="font-size:11px; font-weight:bold; color:${color}; margin-bottom:6px;">${statusLabel}</div>
+                <div style="font-size:12px; color:#475569;">💨 ${h.wind_cardinal} ${Math.round(h.wind_speed)} km/h</div>
+                <div style="font-size:12px; color:#475569;">💧 Humidity: ${Math.round(h.humidity)}%</div>
+                <div style="font-size:12px; color:#475569;">📍 Spread: ${h.spread_velocity.toFixed(1)} km/day</div>
+              </div>
+            \`);
+          })();
+        `;
+      })
+      .join('\n');
+
+    const userMarkerScript = userLocation
+      ? `
+        var userIcon = L.divIcon({
+          className: 'user-pin',
+          html: '<div style="background-color:#2563eb; width:22px; height:22px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(37,99,235,0.6);"></div>',
+          iconSize: [22, 22],
+          iconAnchor: [11, 11]
+        });
+        L.marker([${userLocation.latitude}, ${userLocation.longitude}], { icon: userIcon })
+          .addTo(map)
+          .bindPopup('<div style="font-family:sans-serif; font-weight:bold;">🌾 Your Farm</div>');
+      `
+      : '';
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+          body, html, #map { height: 100%; width: 100%; margin: 0; padding: 0; background: #e2e8f0; }
+          .leaflet-popup-content-wrapper { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        </style>
+      </head>
+      <body>
+        <div id="map"></div>
+        <script>
+          var map = L.map('map', { zoomControl: false }).setView([${lat}, ${lng}], 13);
+
+          // Esri World Imagery (Satellite Tiles matching mockup)
+          L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 18,
+            attribution: 'Esri World Imagery'
+          }).addTo(map);
+
+          ${userMarkerScript}
+          ${markersScript}
+        </script>
+      </body>
+      </html>
+    `;
+  };
+
+  const handleRecenter = () => {
+    if (userLocation && webViewRef.current) {
+      const js = `map.setView([${userLocation.latitude}, ${userLocation.longitude}], 14);`;
+      webViewRef.current.injectJavaScript(js);
+    }
+  };
 
   if (loading) {
     return (
@@ -72,48 +150,17 @@ export default function MapScreen() {
       <OryzaHeader title="Disease Map" unreadCount={unreadCount} />
 
       <View style={styles.mapContainer}>
-        <MapView
+        {/* Leaflet WebView */}
+        <WebView
+          ref={webViewRef}
+          originWhitelist={['*']}
+          source={{ html: generateLeafletHTML() }}
           style={styles.map}
-          provider={PROVIDER_DEFAULT}
-          initialRegion={
-            userLocation
-              ? { ...userLocation, latitudeDelta: 0.12, longitudeDelta: 0.12 }
-              : DEFAULT_REGION
-          }
-          showsUserLocation={true}
-          showsMyLocationButton={false}
-        >
-          {/* Hotspot Markers */}
-          {hotspots.map((h) => (
-            <Marker
-              key={h.id}
-              coordinate={{
-                latitude: parseFloat(h.scan.latitude),
-                longitude: parseFloat(h.scan.longitude),
-              }}
-              pinColor={markerColor(h.status)}
-            >
-              <Callout tooltip>
-                <View style={styles.callout}>
-                  <Text style={styles.calloutTitle}>
-                    {DISEASE_LABELS[h.scan.detected_disease] || h.scan.detected_disease}
-                  </Text>
-                  <Text style={styles.calloutSub}>
-                    {HOTSPOT_STATUS[h.status]?.label ?? h.status}
-                  </Text>
-                  <Text style={styles.calloutSub}>
-                    💨 {h.wind_cardinal} · {h.wind_speed.toFixed(0)} km/h
-                  </Text>
-                  <Text style={styles.calloutSub}>
-                    💧 Humidity: {h.humidity.toFixed(0)}%
-                  </Text>
-                </View>
-              </Callout>
-            </Marker>
-          ))}
-        </MapView>
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+        />
 
-        {/* ── Legend ───────────────────────────────────── */}
+        {/* Legend Overlay */}
         <View style={styles.legend}>
           <Text style={styles.legendTitle}>MAP LEGEND</Text>
           <LegendRow color={HOTSPOT_STATUS.CRITICAL.color} label="High Risk" />
@@ -121,9 +168,9 @@ export default function MapScreen() {
           <LegendRow color={COLORS.info} label="You" />
         </View>
 
-        {/* ── Recenter Button ──────────────────────────── */}
+        {/* Recenter Button */}
         {userLocation && (
-          <TouchableOpacity style={styles.recenterBtn} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.recenterBtn} onPress={handleRecenter} activeOpacity={0.8}>
             <Ionicons name="navigate-outline" size={20} color={COLORS.textPrimary} />
           </TouchableOpacity>
         )}
@@ -157,13 +204,6 @@ const styles = StyleSheet.create({
   legendRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   legendDot: { width: 12, height: 12, borderRadius: 6, marginRight: 8 },
   legendLabel: { fontSize: 12, color: COLORS.textPrimary, fontWeight: '500' },
-  callout: {
-    backgroundColor: COLORS.white, borderRadius: 10, padding: 12,
-    minWidth: 160, shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15, shadowRadius: 4, elevation: 4,
-  },
-  calloutTitle: { fontSize: 13, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 4 },
-  calloutSub: { fontSize: 12, color: COLORS.textSecondary, marginBottom: 2 },
   recenterBtn: {
     position: 'absolute', bottom: 24, right: 16,
     backgroundColor: COLORS.white, width: 44, height: 44,
