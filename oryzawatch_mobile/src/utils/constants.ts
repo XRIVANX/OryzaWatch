@@ -1,11 +1,25 @@
-// ─────────────────────────────────────────────────────────────────────────────
-// OryzaWatch Mobile — App-Wide Constants
-// ─────────────────────────────────────────────────────────────────────────────
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
-// ⚠️  IMPORTANT: Change this to your PC's local IP address when testing on Expo Go.
-//    Run `ipconfig` in PowerShell to find it (look for IPv4 Address).
-//    Example: 'http://192.168.1.105:8000'
-export const API_BASE_URL = 'http://192.168.1.100:8000';
+const getBaseUrl = (): string => {
+  // 1. Auto-detect PC IP address from Expo Go bundler URI
+  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).experienceUrl;
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+      return `http://${ip}:8000`;
+    }
+  }
+  // 2. Android Emulator fallback
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:8000';
+  }
+  // 3. iOS Simulator / Web fallback
+  return 'http://127.0.0.1:8000';
+};
+
+export const API_BASE_URL = getBaseUrl();
+
 
 // Brand Colors
 export const COLORS = {

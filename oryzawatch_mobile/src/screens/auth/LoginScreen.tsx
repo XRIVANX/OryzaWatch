@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { AuthStackParamList } from '../../navigation/AuthStack';
 import { useAuth } from '../../hooks/useAuth';
-import { COLORS } from '../../utils/constants';
+import { COLORS, API_BASE_URL } from '../../utils/constants';
 
 type Props = {
   navigation: StackNavigationProp<AuthStackParamList, 'Login'>;
@@ -137,6 +137,7 @@ export default function LoginScreen({ navigation }: Props) {
 
             {/* Footer */}
             <Text style={styles.footer}>MAO Field Operations · Davao del Norte</Text>
+            <Text style={[styles.footer, { marginTop: 4, opacity: 0.7 }]}>API: {API_BASE_URL}</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

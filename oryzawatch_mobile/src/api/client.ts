@@ -41,7 +41,7 @@ apiClient.interceptors.response.use(
     }
     if (error.request) {
       return Promise.reject(
-        new Error('No response from server. Check your network connection.')
+        new Error(`No response from server at ${API_BASE_URL}. Ensure Django is running on 0.0.0.0:8000 and your phone is on the same Wi-Fi.`)
       );
     }
     return Promise.reject(error);
