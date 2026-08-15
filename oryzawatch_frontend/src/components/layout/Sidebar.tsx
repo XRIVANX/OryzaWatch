@@ -58,28 +58,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
           borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         }}
       >
-        {/* Logo container with rounded shape matching reference */}
+        {/* Circular Big Logo without square wrapper */}
         <div
           style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #1b4b32 0%, #163e2a 100%)',
-            border: '1px solid rgba(74, 222, 128, 0.25)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            filter: 'drop-shadow(0 4px 10px rgba(0, 0, 0, 0.35))',
           }}
         >
-          <OryzaLogo size={32} showText={false} glow={false} />
+          <OryzaLogo size={46} showText={false} glow={false} />
         </div>
         <div>
           <div
             style={{
               fontWeight: 800,
-              fontSize: '17px',
+              fontSize: '17.5px',
               color: '#ffffff',
               letterSpacing: '-0.02em',
               fontFamily: "'Outfit', 'Inter', sans-serif",
