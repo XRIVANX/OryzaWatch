@@ -39,8 +39,8 @@ export const ACTIVITY: ActivityItem[] = [
 ];
 
 export const WEATHER: WeatherItem[] = [
-  { label: 'Temperature', value: '31.4°C',                  valueStyle: {} },
-  { label: 'Humidity',    value: '89% ⚠',                   valueStyle: { color: '#d97706' } },
-  { label: 'Wind',        value: 'NE · 12 km/h',            valueStyle: {} },
-  { label: 'Forecast',    value: 'Scattered Thunderstorms', valueStyle: { fontWeight: 700 } },
+  { label: '🌡️Temperature', value: '31.4°C',                  valueStyle: {} },
+  { label: '💧Humidity',    value: '89% ⚠',                   valueStyle: { color: '#d97706' } },
+  { label: '💨Wind',        value: 'NE · 12 km/h',            valueStyle: {} },
+  { label: '☁️Forecast',    value: 'Scattered Thunderstorms', valueStyle: { fontWeight: 700 } },
 ];
