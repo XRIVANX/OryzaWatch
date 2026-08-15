@@ -1,24 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import LoginForm  from './components/layout/LoginForm';
-import MainLayout from './components/layout/MainLayout';
-import Dashboard  from './pages/Dashboard';
-import DiseaseMap from './pages/DiseaseMap';
-import AIScan     from './pages/AIScan';
-import Alerts     from './pages/Alerts';
-import MAOConsole from './pages/MAOConsole';
-import API        from './services/api';
+import AuthView from './views/auth/AuthView';
+import LayoutView from './views/layout/LayoutView';
+import DashboardView from './views/feed/DashboardView';
+import DiseaseMapView from './views/post/DiseaseMapView';
+import AIScanView from './views/post/AIScanView';
+import AlertsView from './views/profile/AlertsView';
+import MAOConsoleView from './views/profile/MAOConsoleView';
+import OryzaLogo from './components/common/OryzaLogo';
+import LeafParticles from './components/common/LeafParticles';
+import API from './utils/api';
 import type { User } from './types';
 
 const PAGE_COMPONENTS: Record<string, React.ReactNode> = {
-  'dashboard':   <Dashboard />,
-  'disease-map': <DiseaseMap />,
-  'ai-scan':     <AIScan />,
-  'alerts':      <Alerts />,
-  'mao-console': <MAOConsole />,
+  'dashboard':   <DashboardView />,
+  'disease-map': <DiseaseMapView />,
+  'ai-scan':     <AIScanView />,
+  'alerts':      <AlertsView />,
+  'mao-console': <MAOConsoleView />,
 };
 
 const App: React.FC = () => {
-  const [user, setUser]           = useState<User | null>(null);
+  const [user, setUser]             = useState<User | null>(null);
   const [activePage, setActivePage] = useState<string>('dashboard');
   const [verifying, setVerifying]   = useState<boolean>(true);
 
@@ -50,9 +52,24 @@ const App: React.FC = () => {
 
   if (verifying) {
     return (
-      <div style={styles.loadingScreen}>
-        <div style={styles.loadingSpinner}></div>
-        <span style={styles.loadingText}>Verifying session...</span>
+      <div className="leafy-bg" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: '100vw', height: '100vh', gap: '18px' }}>
+        <LeafParticles count={10} />
+        <div style={{ transform: 'scale(1.05)' }}>
+          <OryzaLogo size={75} showText={false} glow={false} />
+        </div>
+        <div
+          style={{
+            width: '34px',
+            height: '34px',
+            border: '3px solid #e1eae3',
+            borderTop: '3px solid var(--leaf-primary)',
+            borderRadius: '50%',
+            animation: 'spin 0.9s linear infinite',
+          }}
+        />
+        <span style={{ fontSize: '13px', color: 'var(--leaf-forest)', fontWeight: 600, letterSpacing: '0.04em' }}>
+          Verifying session...
+        </span>
       </div>
     );
   }
@@ -60,45 +77,19 @@ const App: React.FC = () => {
   return (
     <>
       {!user ? (
-        <LoginForm onLoginSuccess={(userData: User) => setUser(userData)} />
+        <AuthView onLoginSuccess={(userData: User) => setUser(userData)} />
       ) : (
-        <MainLayout
+        <LayoutView
           user={user}
           activePage={activePage}
           onNavigate={setActivePage}
           onLogOut={handleLogOut}
         >
-          {PAGE_COMPONENTS[activePage] || <Dashboard />}
-        </MainLayout>
+          {PAGE_COMPONENTS[activePage] || <DashboardView />}
+        </LayoutView>
       )}
     </>
   );
-};
-
-const styles: Record<string, React.CSSProperties> = {
-  loadingScreen: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100vw',
-    height: '100vh',
-    background: 'var(--bg)',
-    gap: '16px',
-  },
-  loadingSpinner: {
-    width: '40px',
-    height: '40px',
-    border: '4px solid var(--border)',
-    borderTop: '4px solid var(--green-dark)',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite',
-  },
-  loadingText: {
-    fontSize: '14px',
-    color: 'var(--text-secondary)',
-    fontWeight: 500,
-  },
 };
 
 // Add CSS animation for spin directly

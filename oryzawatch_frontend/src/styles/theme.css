@@ -1,0 +1,207 @@
+/* ─── Light, Comforting & Minimalist Botanical Animations ────────────────── */
+
+/* Calming Ambient Gradient Canvas */
+.leafy-bg {
+  background: radial-gradient(circle at 85% 15%, rgba(110, 231, 159, 0.12) 0%, transparent 45%),
+              radial-gradient(circle at 10% 85%, rgba(35, 126, 70, 0.06) 0%, transparent 55%),
+              radial-gradient(circle at 50% 50%, rgba(220, 245, 229, 0.4) 0%, transparent 70%),
+              var(--bg);
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Glassmorphism Crisp Cards */
+.glass-panel {
+  background: var(--bg-card-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-panel:hover {
+  border-color: var(--border-bright);
+  box-shadow: var(--shadow-lg), 0 0 16px rgba(46, 158, 89, 0.08);
+}
+
+.glass-card-interactive {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.glass-card-interactive:hover {
+  transform: translateY(-2px);
+  border-color: var(--leaf-bright);
+  box-shadow: var(--shadow-md), 0 0 12px rgba(46, 158, 89, 0.1);
+}
+
+/* ─── Leaf Particles Ambient Effect (Gentle & Translucent) ──────────────── */
+.leaf-particle {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.25;
+  filter: drop-shadow(0 2px 6px rgba(46, 158, 89, 0.15));
+  animation: floatLeaf linear infinite;
+}
+
+@keyframes floatLeaf {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(0.8);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.35;
+  }
+  85% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: translate(90px, 750px) rotate(320deg) scale(1.05);
+    opacity: 0;
+  }
+}
+
+/* ─── AI Scanning Radar & Laser Sweeper (Light & High-Tech) ─────────────── */
+.scanner-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  border: 2px dashed rgba(46, 158, 89, 0.4);
+  background: #f7faf8;
+  transition: all 0.3s ease;
+}
+
+.scanner-container.is-scanning {
+  border-color: var(--leaf-bright);
+  box-shadow: 0 0 24px rgba(46, 158, 89, 0.15), inset 0 0 15px rgba(110, 231, 159, 0.15);
+}
+
+.scanner-laser-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, #2e9e59 20%, #6ee79f 50%, #2e9e59 80%, transparent 100%);
+  box-shadow: 0 0 14px #34b765, 0 0 24px rgba(46, 158, 89, 0.6), 0 0 6px #fff;
+  z-index: 10;
+  animation: scanLaser 2.4s ease-in-out infinite alternate;
+}
+
+.scanner-laser-trail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: linear-gradient(180deg, rgba(46, 158, 89, 0.18) 0%, transparent 100%);
+  z-index: 9;
+  animation: scanLaserTrail 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes scanLaser {
+  0% { top: 2%; opacity: 0.85; }
+  50% { opacity: 1; }
+  100% { top: 96%; opacity: 0.85; }
+}
+
+@keyframes scanLaserTrail {
+  0% { top: 2%; }
+  100% { top: calc(96% - 48px); }
+}
+
+/* Hologram Scanning Grid */
+.scanner-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(46, 158, 89, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(46, 158, 89, 0.08) 1px, transparent 1px);
+  background-size: 22px 22px;
+  pointer-events: none;
+  z-index: 5;
+  animation: gridPulse 3s ease-in-out infinite;
+}
+
+@keyframes gridPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.85; }
+}
+
+/* Biometric Detection Nodes / Crosshairs */
+.bio-node {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #2e9e59;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: bioPulse 1.6s ease-out infinite;
+  z-index: 12;
+}
+
+.bio-node::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  background: #154326;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 6px #2e9e59;
+}
+
+@keyframes bioPulse {
+  0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.3; }
+  50% { opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+
+/* HUD Corner Brackets */
+.hud-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-color: var(--leaf-bright);
+  z-index: 8;
+}
+.hud-top-left { top: 12px; left: 12px; border-top: 2px solid; border-left: 2px solid; }
+.hud-top-right { top: 12px; right: 12px; border-top: 2px solid; border-right: 2px solid; }
+.hud-bottom-left { bottom: 12px; left: 12px; border-bottom: 2px solid; border-left: 2px solid; }
+.hud-bottom-right { bottom: 12px; right: 12px; border-bottom: 2px solid; border-right: 2px solid; }
+
+/* Pulse Animation */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(46, 158, 89, 0.15);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(46, 158, 89, 0.35);
+  }
+}
+
+.glow-pulse {
+  animation: pulseGlow 2.5s infinite;
+}
+
+/* Shimmer Progress */
+@keyframes shimmerSweep {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg, #154326 0%, #2e9e59 40%, #154326 60%, #154326 100%);
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: shimmerSweep 3.5s linear infinite;
+  font-weight: 700;
+}

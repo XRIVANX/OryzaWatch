@@ -1,22 +1,20 @@
 import { useState } from 'react';
 import type { CSSProperties, ChangeEvent, FormEvent } from 'react';
-import API from '../../services/api';
-import ImageInput from '../input/ImageInput';
-import TextInput from '../input/TextInput';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import API from '../../utils/api';
+import TextInput from '../auth/TextInput';
 
 interface DiagnosticUploadProps {
-  onUploadSuccess?: () => void;      
+  onUploadSuccess?: () => void;
 }
 
 interface Coords {
   latitude: string;
   longitude: string;
 }
+
 interface Message {
-  type: 'success' | 'error';            
-  text: string;                          
+  type: 'success' | 'error';
+  text: string;
 }
 
 interface DiagnosticResponse {
@@ -24,16 +22,24 @@ interface DiagnosticResponse {
   confidence_score: number;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
-const DiagnosticUpload = ({ onUploadSuccess }: DiagnosticUploadProps) => {
+export const DiagnosticUpload = ({ onUploadSuccess }: DiagnosticUploadProps) => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [preview, setPreview]             = useState<string | null>(null);
   const [coords, setCoords]               = useState<Coords>({ latitude: '7.4483', longitude: '125.8094' });
   const [loading, setLoading]             = useState<boolean>(false);
   const [message, setMessage]             = useState<Message | null>(null);
 
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedImage(file);
+      setPreview(URL.createObjectURL(file));
+      setMessage(null);
+    }
+  };
+
   const handleCoordsChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setCoords(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setCoords((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -62,10 +68,8 @@ const DiagnosticUpload = ({ onUploadSuccess }: DiagnosticUploadProps) => {
       });
 
       onUploadSuccess?.();
-
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } } };
-      console.error(err);
       setMessage({
         type: 'error',
         text: e.response?.data?.detail || 'Upload submission execution failed.',
@@ -76,26 +80,58 @@ const DiagnosticUpload = ({ onUploadSuccess }: DiagnosticUploadProps) => {
   };
 
   return (
-    <div style={styles.card}>
-      <h3 style={styles.title}>📸 AI Leaf Diagnostics Engine</h3>
-      <p style={styles.subtitle}>Upload rice crop specimens for instant health processing</p>
+    <div className="glass-panel" style={{ padding: '28px', maxWidth: '520px', margin: '0 auto' }}>
+      <h3 style={{ margin: '0 0 6px 0', color: 'var(--leaf-bright)', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span>🌿</span> AI Leaf Diagnostics Engine
+      </h3>
+      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '0 0 20px 0' }}>
+        Upload rice crop specimens for instant health processing
+      </p>
 
       {message && (
-        <div style={{
-          ...styles.alert,
-          backgroundColor: message.type === 'success' ? '#1b5e20' : '#b71c1c',
-        }}>
-          {message.text}
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: 'var(--radius-sm)',
+            color: '#fff',
+            fontSize: '13.5px',
+            marginBottom: '18px',
+            fontWeight: 500,
+            background: message.type === 'success' ? 'var(--green-status-light)' : 'var(--red-light)',
+            border: `1px solid ${message.type === 'success' ? 'var(--green-status-border)' : 'var(--red-border)'}`,
+          }}
+        >
+          {message.type === 'success' ? '✓ ' : '✗ '} {message.text}
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
-        <ImageInput
-          label="Crop Leaf Image"
-          onImageSelect={setSelectedImage}
-        />
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 500, display: 'block', marginBottom: '6px' }}>
+            Crop Leaf Image <span style={{ color: 'var(--leaf-bright)' }}>*</span>
+          </label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid var(--border)',
+              backgroundColor: 'rgba(10, 24, 16, 0.7)',
+              color: 'var(--text-primary)',
+            }}
+          />
+        </div>
 
-        <div style={styles.row}>
+        {preview && (
+          <div style={{ marginBottom: '16px', textAlign: 'center' }}>
+            <img src={preview} alt="Preview" style={{ maxHeight: '160px', borderRadius: '8px', margin: '0 auto' }} />
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <TextInput
             label="Latitude Coordinate"
             name="latitude"
@@ -110,23 +146,17 @@ const DiagnosticUpload = ({ onUploadSuccess }: DiagnosticUploadProps) => {
           />
         </div>
 
-        <button type="submit" disabled={loading} style={styles.submitBtn}>
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn btn-leaf"
+          style={{ width: '100%', padding: '12px', fontSize: '14px', marginTop: '8px' }}
+        >
           {loading ? 'Processing ML Diagnostics...' : 'Submit Diagnostic Request'}
         </button>
       </form>
     </div>
   );
-};
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const styles: Record<string, CSSProperties> = {
-  card:      { background: '#1a1a1a', padding: '24px', borderRadius: '8px', border: '1px solid #2d2d2d', maxWidth: '500px', margin: '0 auto' },
-  title:     { margin: '0 0 4px 0', color: '#4caf50' },
-  subtitle:  { fontSize: '13px', color: '#888', margin: '0 0 20px 0' },
-  row:       { display: 'flex', gap: '16px' },
-  submitBtn: { width: '100%', padding: '12px', borderRadius: '6px', border: 'none', backgroundColor: '#4caf50', color: '#fff', fontWeight: 'bold', cursor: 'pointer', fontSize: '15px' },
-  alert:     { padding: '12px', borderRadius: '6px', color: '#fff', fontSize: '14px', marginBottom: '16px', fontWeight: 500 },
 };
 
 export default DiagnosticUpload;

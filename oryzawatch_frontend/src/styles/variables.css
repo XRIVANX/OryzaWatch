@@ -1,0 +1,81 @@
+/* ─── OryzaWatch Light, Comforting & Minimalist Botanical Theme Tokens ─── */
+:root {
+  /* Ambient Light Botanical Backgrounds */
+  --bg:                  #f5f8f5;
+  --bg-gradient:         linear-gradient(150deg, #f8faf8 0%, #eef5f0 50%, #f4f8f5 100%);
+  --bg-card:             #ffffff;
+  --bg-card-hover:       #fafdfb;
+  --bg-card-glass:       rgba(255, 255, 255, 0.88);
+  --bg-sidebar:          #ffffff;
+  --bg-topbar:           rgba(255, 255, 255, 0.92);
+  --bg-hover:            #eef7f1;
+  --bg-active:           #e2f3e8;
+
+  /* Leaf & Botanical Greens */
+  --leaf-forest:         #154326;
+  --leaf-deep:           #1b6336;
+  --leaf-primary:        #237e46;
+  --leaf-vibrant:        #2e9e59;
+  --leaf-bright:         #34b765;
+  --leaf-sprout:         #6ee79f;
+  --leaf-pastel:         #dcf5e5;
+  --leaf-soft:           #edf9f1;
+  --leaf-glow:           rgba(46, 158, 89, 0.2);
+
+  /* Rice Harvest Gold Accents */
+  --grain-gold:          #ca8a04;
+  --grain-light:         #eab308;
+  --grain-amber:         #f59e0b;
+  --grain-soft:          #fef9c3;
+  --grain-glow:          rgba(234, 179, 8, 0.2);
+
+  /* Borders & Dividers */
+  --border:              #e1eae3;
+  --border-light:        #edf3ee;
+  --border-bright:       #86d8a3;
+  --border-focus:        #2e9e59;
+  --border-glow:         0 0 12px rgba(46, 158, 89, 0.18);
+
+  /* Typography (High-contrast, comforting readable dark slate-greens) */
+  --text-primary:        #14261c;
+  --text-secondary:      #4a6152;
+  --text-muted:          #7a9182;
+  --text-inverse:        #ffffff;
+
+  /* Status Colors */
+  --red:                 #dc2626;
+  --red-light:           #fef2f2;
+  --red-border:          #fecaca;
+  --red-text:            #991b1b;
+  
+  --orange:              #d97706;
+  --orange-light:        #fffbeb;
+  --orange-border:       #fde68a;
+  --orange-text:         #92400e;
+
+  --blue:                #0284c7;
+  --blue-light:          #f0f9ff;
+  --blue-border:         #bae6fd;
+  --blue-text:           #075985;
+
+  --green-status:        #16a34a;
+  --green-status-light:  #f0fdf4;
+  --green-status-border: #bbf7d0;
+  --green-status-text:   #15803d;
+
+  /* Shadows & Organic Depth */
+  --shadow-sm:           0 1px 3px rgba(18, 48, 28, 0.04), 0 1px 2px rgba(18, 48, 28, 0.02);
+  --shadow-md:           0 4px 16px rgba(18, 48, 28, 0.06), 0 1px 3px rgba(18, 48, 28, 0.03);
+  --shadow-lg:           0 10px 30px rgba(18, 48, 28, 0.08), 0 2px 8px rgba(18, 48, 28, 0.04);
+  --shadow-glow:         0 0 24px rgba(46, 158, 89, 0.15);
+
+  --radius-sm:           8px;
+  --radius-md:           14px;
+  --radius-lg:           20px;
+  --radius-pill:         9999px;
+
+  --sidebar-w:           240px;
+  --topbar-h:            66px;
+
+  --font-main:           'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
