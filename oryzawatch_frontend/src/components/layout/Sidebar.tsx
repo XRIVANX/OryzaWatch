@@ -5,11 +5,12 @@ import type { User, UserRole } from '../../types';
 import { ROLE_LABELS } from '../../utils/auth';
 
 const NAV_ITEMS: NavItem[] = [
-  { id: 'dashboard',   label: 'Dashboard',   icon: '⊞',  group: 'MAIN' },
-  { id: 'disease-map', label: 'Disease Map',  icon: '⊙',  group: 'MAIN' },
-  { id: 'ai-scan',     label: 'AI Scan',      icon: '🌿', group: 'MAIN' },
-  { id: 'alerts',      label: 'Alerts',       icon: '🔔', group: 'MAIN', badge: 3 },
-  { id: 'mao-console', label: 'MAO Console',  icon: '👤', group: 'ADMIN' },
+  { id: 'dashboard',   label: 'Dashboard',   iconType: 'dashboard',   group: 'MAIN' },
+  { id: 'disease-map', label: 'Disease Map',  iconType: 'disease-map',  group: 'MAIN' },
+  { id: 'ai-scan',     label: 'AI Scan',      iconType: 'ai-scan',      group: 'MAIN' },
+  { id: 'alerts',      label: 'Alerts',       iconType: 'alerts',       group: 'MAIN', badge: 3 },
+  { id: 'profile',     label: 'Profile',      iconType: 'profile',      group: 'MAIN' },
+  { id: 'mao-console', label: 'MAO Console',  iconType: 'mao-console',  group: 'ADMIN' },
 ];
 
 interface SidebarProps {
@@ -31,63 +32,181 @@ export const Sidebar: React.FC<SidebarProps> = ({
     : [];
 
   const roleLabel = ROLE_LABELS[user.role] ?? user.role;
+  const avatarLetter = (user.username || roleLabel).charAt(0).toUpperCase();
+  const municipalityDisplay = user.municipality 
+    ? `${user.municipality.charAt(0) + user.municipality.slice(1).toLowerCase()}, Davao del Norte`
+    : 'Davao del Norte';
 
   return (
-    <aside className="layout-sidebar">
-      {/* Brand Header */}
+    <aside
+      className="layout-sidebar"
+      style={{
+        backgroundColor: '#07190f',
+        borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+      }}
+    >
+      {/* ── Brand Header ── */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
-          padding: '20px 18px 18px',
-          borderBottom: '1px solid var(--border-light)',
-          background: '#ffffff',
+          gap: '14px',
+          padding: '24px 20px 22px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <OryzaLogo size={28} showText={false} glow={false} />
+        {/* Logo container with rounded shape matching reference */}
+        <div
+          style={{
+            width: '42px',
+            height: '42px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #1b4b32 0%, #163e2a 100%)',
+            border: '1px solid rgba(74, 222, 128, 0.25)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+          }}
+        >
+          <OryzaLogo size={32} showText={false} glow={false} />
         </div>
         <div>
-          <div style={{ fontWeight: 800, fontSize: '16.5px', color: 'var(--text-primary)', letterSpacing: '-0.02em', fontFamily: "'Outfit', sans-serif" }}>
+          <div
+            style={{
+              fontWeight: 800,
+              fontSize: '17px',
+              color: '#ffffff',
+              letterSpacing: '-0.02em',
+              fontFamily: "'Outfit', 'Inter', sans-serif",
+              lineHeight: 1.2,
+            }}
+          >
             OryzaWatch
           </div>
-          <div style={{ fontSize: '9.5px', color: 'var(--leaf-primary)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            Rice Health AI
+          <div
+            style={{
+              fontSize: '12px',
+              color: '#7e9988',
+              fontWeight: 500,
+              marginTop: '3px',
+            }}
+          >
+            Rice Disease Monitor
           </div>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav style={{ flex: 1, padding: '14px 0', overflowY: 'auto' }}>
+      {/* ── Navigation Menu ── */}
+      <nav style={{ flex: 1, padding: '16px 0', overflowY: 'auto' }}>
         <NavGroup label="MAIN" items={mainItems} activePage={activePage} onNavigate={onNavigate} />
         {adminItems.length > 0 && (
           <NavGroup label="ADMIN" items={adminItems} activePage={activePage} onNavigate={onNavigate} />
         )}
       </nav>
 
-      {/* User Footer Panel */}
+      {/* ── User Footer Panel ── */}
       <div
         style={{
-          padding: '16px 18px',
-          borderTop: '1px solid var(--border-light)',
-          background: '#f9fbf9',
+          padding: '18px 20px',
+          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          backgroundColor: '#05140c',
         }}
       >
-        <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '2px', fontWeight: 600 }}>
-          Logged in as
+        {/* Avatar + User Role info */}
+        <div
+          onClick={() => onNavigate('profile')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            marginBottom: '12px',
+            cursor: 'pointer',
+            padding: '4px',
+            borderRadius: '8px',
+            transition: 'background 0.15s ease',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.04)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+        >
+          {/* Avatar Circle */}
+          <div
+            style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '50%',
+              backgroundColor: '#246344',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff',
+              fontWeight: 800,
+              fontSize: '15px',
+              flexShrink: 0,
+            }}
+          >
+            {avatarLetter}
+          </div>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                fontSize: '14px',
+                fontWeight: 800,
+                color: '#ffffff',
+                lineHeight: 1.2,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                fontFamily: "'Outfit', sans-serif",
+              }}
+            >
+              {roleLabel}
+            </div>
+            <div
+              style={{
+                fontSize: '11.5px',
+                color: '#7e9988',
+                marginTop: '3px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {municipalityDisplay}
+            </div>
+          </div>
         </div>
-        <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {roleLabel} · {user.municipality}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--green-status-text)', fontWeight: 600 }}>
+
+        {/* Online status and Log Out button */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingTop: '4px',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '12.5px',
+              color: '#22c55e',
+              fontWeight: 600,
+            }}
+          >
             <span
               style={{
                 width: '7px',
                 height: '7px',
                 borderRadius: '50%',
-                background: '#16a34a',
+                backgroundColor: '#22c55e',
                 display: 'inline-block',
               }}
             />
@@ -98,20 +217,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
             style={{
               background: 'none',
               border: 'none',
-              color: 'var(--text-secondary)',
-              fontSize: '11.5px',
+              color: '#8da596',
+              fontSize: '12.5px',
               fontWeight: 600,
               cursor: 'pointer',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              textDecoration: 'underline',
-              transition: 'all 0.15s',
+              padding: '2px 4px',
+              transition: 'color 0.15s ease',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#dc2626';
+              e.currentTarget.style.color = '#f87171';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.color = 'var(--text-secondary)';
+              e.currentTarget.style.color = '#8da596';
             }}
           >
             Log Out

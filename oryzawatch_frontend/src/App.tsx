@@ -5,19 +5,12 @@ import DashboardView from './views/feed/DashboardView';
 import DiseaseMapView from './views/post/DiseaseMapView';
 import AIScanView from './views/post/AIScanView';
 import AlertsView from './views/profile/AlertsView';
+import ProfileView from './views/profile/ProfileView';
 import MAOConsoleView from './views/profile/MAOConsoleView';
 import OryzaLogo from './components/common/OryzaLogo';
 import LeafParticles from './components/common/LeafParticles';
 import API from './utils/api';
 import type { User } from './types';
-
-const PAGE_COMPONENTS: Record<string, React.ReactNode> = {
-  'dashboard':   <DashboardView />,
-  'disease-map': <DiseaseMapView />,
-  'ai-scan':     <AIScanView />,
-  'alerts':      <AlertsView />,
-  'mao-console': <MAOConsoleView />,
-};
 
 const App: React.FC = () => {
   const [user, setUser]             = useState<User | null>(null);
@@ -48,6 +41,25 @@ const App: React.FC = () => {
     localStorage.clear();
     setUser(null);
     setActivePage('dashboard');
+  };
+
+  const getPageComponent = (page: string) => {
+    switch (page) {
+      case 'dashboard':
+        return <DashboardView />;
+      case 'disease-map':
+        return <DiseaseMapView />;
+      case 'ai-scan':
+        return <AIScanView />;
+      case 'alerts':
+        return <AlertsView />;
+      case 'profile':
+        return user ? <ProfileView user={user} onLogOut={handleLogOut} /> : <DashboardView />;
+      case 'mao-console':
+        return <MAOConsoleView />;
+      default:
+        return <DashboardView />;
+    }
   };
 
   if (verifying) {
@@ -85,7 +97,7 @@ const App: React.FC = () => {
           onNavigate={setActivePage}
           onLogOut={handleLogOut}
         >
-          {PAGE_COMPONENTS[activePage] || <DashboardView />}
+          {getPageComponent(activePage)}
         </LayoutView>
       )}
     </>
