@@ -1,0 +1,8 @@
+node_modules
+.expo
+.web
+.vscode
+.env
+.git
+.DS_Store
+npm-debug.log
