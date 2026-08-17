@@ -24,6 +24,42 @@ services:
       - ./oryzawatch_mobile:/app
     command: npm start
 
+  # Backend service (Django)
+  backend:
+    build: ./oryzawatch_backend
+    env_file:
+      - ./oryzawatch_backend/.env
+    ports:
+      - "8000:8000"   # Django app
+    depends_on:
+      - db
+    restart: unless-stopped
+    volumes:
+      - ./oryzawatch_backend:/app
+      - ./oryzawatch_backend/media:/app/media
+
+  # MySQL database for backend
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: oryzawatch_db
+      MYSQL_USER: root
+      MYSQL_PASSWORD: Rivan2004
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# Shared volumes
+volumes:
+  db_data:
+
 # Notes:
 # - On Windows, device connection to the Expo server sometimes requires using the "Tunnel" option in Expo or
-#   configuring the host networking appropriately. For building native APKs/APKs in CI, additional native toolchains are required.
+#   configuring the host networking appropriately. For building native Android/iOS binaries, additional native toolchains are required.
+# - The backend uses the .env file at oryzawatch_backend/.env — review its DB_* values. The compose file sets a MySQL server with the password above; change as needed.
