@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from users.models import ActivityLog
 
 User = get_user_model()
 
@@ -22,16 +23,14 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 
     def validate_role(self, value):
         """
-        MAO_ADMIN   — only allowed if no MAO_ADMIN exists yet (first-run only).
-        KAGAWAD     — allowed; an MAO_ADMIN can later promote or demote via Django admin.
-        FARMER      — always allowed.
+        MAO_ADMIN   — cannot be registered via this endpoint (first-run only, now removed).
+        KAGAWAD     — only MAO_ADMIN can register.
+        FARMER      — MAO_ADMIN or KAGAWAD can register.
         """
         if value == 'MAO_ADMIN':
-            if User.objects.filter(role='MAO_ADMIN').exists():
-                raise serializers.ValidationError(
-                    "An MAO Admin already exists. "
-                    "Contact your administrator to assign privileged roles."
-                )
+            raise serializers.ValidationError(
+                "MAO Admin accounts cannot be created through this endpoint."
+            )
         return value
 
     def create(self, validated_data):
@@ -50,3 +49,19 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'username', 'email',
             'role', 'municipality', 'barangay', 'phone_number',
         ]
+
+
+class ActivityLogSerializer(serializers.ModelSerializer):
+    """Serializes activity log entries for the admin console."""
+    user     = serializers.SerializerMethodField()
+    action_label = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = ActivityLog
+        fields = ['id', 'timestamp', 'user', 'action_type', 'action_label', 'details']
+
+    def get_user(self, obj):
+        return obj.user.username if obj.user else 'system'
+
+    def get_action_label(self, obj):
+        return obj.get_action_type_display()

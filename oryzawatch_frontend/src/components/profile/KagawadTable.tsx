@@ -2,21 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { usersApi } from '../../utils/api';
 import type { UserListItem } from '../../types';
 
-const STATUS_BADGE: Record<string, string> = {
-  'Critical':   'badge badge-red',
-  'At Risk':    'badge badge-orange',
-  'Safe':       'badge badge-green',
-  'Monitoring': 'badge badge-blue',
-};
-
-interface FarmerTableProps {
+interface KagawadTableProps {
   onRegisterClick?: () => void;
 }
 
 const PAGE_SIZE = 10;
 
-const formatReportDate = (raw: string): string => {
-  if (!raw || raw === 'No scans yet') return 'No scans yet';
+const formatDate = (raw: string): string => {
+  if (!raw) return '—';
   try {
     const d = new Date(raw);
     if (isNaN(d.getTime())) return raw;
@@ -24,38 +17,36 @@ const formatReportDate = (raw: string): string => {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
     });
   } catch {
     return raw;
   }
 };
 
-export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => {
-  const [farmers, setFarmers]       = useState<UserListItem[]>([]);
+export const KagawadTable: React.FC<KagawadTableProps> = ({ onRegisterClick }) => {
+  const [kagawads, setKagawads]     = useState<UserListItem[]>([]);
   const [total, setTotal]           = useState<number>(0);
   const [search, setSearch]         = useState<string>('');
   const [currentPage, setPage]     = useState<number>(1);
   const [loading, setLoading]       = useState<boolean>(true);
   const [error, setError]           = useState<string | null>(null);
 
-  const fetchFarmers = useCallback(async (searchTerm: string, page: number) => {
+  const fetchKagawads = useCallback(async (searchTerm: string, page: number) => {
     setLoading(true);
     setError(null);
     try {
       const offset = (page - 1) * PAGE_SIZE;
       const res = await usersApi.list({
-        role: 'FARMER',
+        role: 'KAGAWAD',
         search: searchTerm,
         limit: PAGE_SIZE,
         offset,
       });
-      setFarmers(res.data.results || []);
+      setKagawads(res.data.results || []);
       setTotal(res.data.total || 0);
     } catch (err: unknown) {
-      console.error('Failed to fetch real farmers:', err);
-      setError('Unable to load farmers list. Please check your connection or login session.');
+      console.error('Failed to fetch real kagawads:', err);
+      setError('Unable to load SK / Agri-Kagawad list. Please check your connection or session.');
     } finally {
       setLoading(false);
     }
@@ -63,10 +54,10 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchFarmers(search, currentPage);
+      fetchKagawads(search, currentPage);
     }, 250);
     return () => clearTimeout(timer);
-  }, [search, currentPage, fetchFarmers]);
+  }, [search, currentPage, fetchKagawads]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
@@ -74,27 +65,25 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
   };
 
   const handleExportCSV = () => {
-    if (farmers.length === 0) return;
-    const headers = ['Farmer Code', 'Username', 'Name', 'Email', 'Phone', 'Barangay', 'Municipality', 'Status', 'Detected Disease', 'Total Scans', 'Last Report'];
-    const rows = farmers.map(f => [
-      f.user_code,
-      f.username,
-      `"${f.name.replace(/"/g, '""')}"`,
-      f.email || '',
-      f.phone_number || '',
-      f.barangay,
-      f.municipality,
-      f.status,
-      f.disease,
-      f.total_scans,
-      `"${f.last_report}"`,
+    if (kagawads.length === 0) return;
+    const headers = ['Kagawad Code', 'Username', 'Name', 'Email', 'Phone', 'Barangay', 'Municipality', 'Registered Date', 'Scans Submitted'];
+    const rows = kagawads.map(k => [
+      k.user_code,
+      k.username,
+      `"${k.name.replace(/"/g, '""')}"`,
+      k.email || '',
+      k.phone_number || '',
+      k.barangay,
+      k.municipality,
+      `"${formatDate(k.date_joined)}"`,
+      k.total_scans,
     ]);
     const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `farmers_registry_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute('download', `agri_kagawad_registry_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -108,10 +97,10 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h2 style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'Outfit', sans-serif" }}>
-            🌾 Registered Farmers Registry
+            🎖️ SK / Agri-Kagawad Officials Registry
           </h2>
           <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-            Real-time registered rice farmers in the municipality, including crop diagnostic history.
+            Designated barangay agricultural and youth leaders responsible for farmer verification and field coordination.
           </p>
         </div>
         {onRegisterClick && (
@@ -120,7 +109,7 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
             onClick={onRegisterClick}
             style={{ padding: '8px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
-            <span>➕</span> Register New Farmer
+            <span>➕</span> Register New Kagawad
           </button>
         )}
       </div>
@@ -139,7 +128,7 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
           </svg>
           <input
             type="text"
-            placeholder="Search farmers by name, username, phone, or barangay…"
+            placeholder="Search Kagawad by name, username, barangay, or phone…"
             value={search}
             onChange={handleSearchChange}
             style={{
@@ -159,7 +148,7 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <button
             className="btn btn-outline"
-            onClick={() => fetchFarmers(search, currentPage)}
+            onClick={() => fetchKagawads(search, currentPage)}
             disabled={loading}
             style={{ padding: '9px 14px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
             title="Refresh list"
@@ -170,7 +159,7 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
           <button
             className="btn btn-outline"
             onClick={handleExportCSV}
-            disabled={farmers.length === 0}
+            disabled={kagawads.length === 0}
             style={{ padding: '9px 14px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
@@ -185,7 +174,7 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
       {error && (
         <div style={{ padding: '12px 16px', background: 'var(--red-light)', border: '1px solid var(--red-border)', borderRadius: 'var(--radius-sm)', color: 'var(--red-text)', fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>⚠️ {error}</span>
-          <button className="btn btn-outline" onClick={() => fetchFarmers(search, currentPage)} style={{ padding: '4px 10px', fontSize: '12px' }}>
+          <button className="btn btn-outline" onClick={() => fetchKagawads(search, currentPage)} style={{ padding: '4px 10px', fontSize: '12px' }}>
             Retry
           </button>
         </div>
@@ -197,7 +186,7 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
             <thead>
               <tr style={{ background: '#f9fbf9', borderBottom: '1px solid var(--border)' }}>
-                {['FARMER ID', 'FARMER NAME', 'BARANGAY', 'PHONE NUMBER', 'CROP STATUS', 'LATEST DIAGNOSIS', 'SCANS', 'LAST REPORT'].map((h) => (
+                {['OFFICER ID', 'KAGAWAD NAME', 'ASSIGNED BARANGAY', 'CONTACT INFO', 'ROLE / DESIGNATION', 'SCANS REPORTED', 'REGISTERED DATE'].map((h) => (
                   <th
                     key={h}
                     style={{
@@ -217,34 +206,34 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-muted)' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-muted)' }}>
                     <div style={{ display: 'inline-block', width: '28px', height: '28px', border: '3px solid var(--border)', borderTopColor: 'var(--leaf-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                    <p style={{ marginTop: '12px', fontSize: '13px' }}>Loading real registered farmers…</p>
+                    <p style={{ marginTop: '12px', fontSize: '13px' }}>Loading SK / Agri-Kagawad officers…</p>
                   </td>
                 </tr>
-              ) : farmers.length === 0 ? (
+              ) : kagawads.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '56px 20px' }}>
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>🌾</div>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '56px 20px' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>🎖️</div>
                     <h4 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                      {search ? 'No farmers matching search' : 'No Farmers Registered Yet'}
+                      {search ? 'No Agri-Kagawads matching search' : 'No SK / Agri-Kagawad Officers Registered Yet'}
                     </h4>
-                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '360px', margin: '0 auto 16px' }}>
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '380px', margin: '0 auto 16px' }}>
                       {search
                         ? 'Try searching with a different name, barangay, or phone number.'
-                        : 'Use the registration form to add real farmers to the system.'}
+                        : 'Register SK / Agri-Kagawad accounts to represent barangays and verify local rice fields.'}
                     </p>
                     {onRegisterClick && !search && (
                       <button className="btn btn-leaf" onClick={onRegisterClick} style={{ padding: '8px 18px', fontSize: '13px' }}>
-                        ➕ Register First Farmer
+                        ➕ Register First Kagawad
                       </button>
                     )}
                   </td>
                 </tr>
               ) : (
-                farmers.map((f, i) => (
+                kagawads.map((k, i) => (
                   <tr
-                    key={f.id}
+                    key={k.id}
                     style={{
                       borderBottom: '1px solid var(--border-light)',
                       background: i % 2 === 0 ? '#ffffff' : '#fafdfb',
@@ -253,8 +242,8 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
                     onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = i % 2 === 0 ? '#ffffff' : '#fafdfb'; }}
                   >
-                    <td style={{ padding: '14px 18px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, color: 'var(--leaf-deep)' }}>
-                      {f.user_code}
+                    <td style={{ padding: '14px 18px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, color: '#6366f1' }}>
+                      {k.user_code}
                     </td>
                     <td style={{ padding: '14px 18px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -263,7 +252,7 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
                             width: '30px',
                             height: '30px',
                             borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #1b6336, #237e46)',
+                            background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
                             color: '#fff',
                             fontSize: '12px',
                             fontWeight: 700,
@@ -273,40 +262,45 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
                             flexShrink: 0,
                           }}
                         >
-                          {f.name.charAt(0).toUpperCase() || 'F'}
+                          {k.name.charAt(0).toUpperCase() || 'K'}
                         </div>
                         <div>
-                          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{f.name}</div>
-                          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>@{f.username}</div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{k.name}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>@{k.username}</div>
                         </div>
                       </div>
                     </td>
                     <td style={{ padding: '14px 18px', color: 'var(--text-secondary)' }}>
-                      <div style={{ fontWeight: 500 }}>{f.barangay}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{f.municipality}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{k.barangay}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{k.municipality}</div>
                     </td>
                     <td style={{ padding: '14px 18px', color: 'var(--text-secondary)', fontSize: '12.5px' }}>
-                      {f.phone_number ? (
-                        <span>📞 {f.phone_number}</span>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>—</span>
-                      )}
+                      <div>{k.phone_number ? `📞 ${k.phone_number}` : <span style={{ color: 'var(--text-muted)' }}>—</span>}</div>
+                      {k.email && <div style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>✉️ {k.email}</div>}
                     </td>
                     <td style={{ padding: '14px 18px' }}>
-                      <span className={STATUS_BADGE[f.status] || 'badge'}>{f.status}</span>
-                    </td>
-                    <td style={{ padding: '14px 18px' }}>
-                      {f.disease === 'None' || !f.disease ? (
-                        <span style={{ color: 'var(--text-muted)' }}>None</span>
-                      ) : (
-                        <span style={{ color: '#dc2626', fontWeight: 600 }}>{f.disease}</span>
-                      )}
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '3px 10px',
+                          borderRadius: '12px',
+                          backgroundColor: '#ede9fe',
+                          color: '#5b21b6',
+                          fontSize: '11.5px',
+                          fontWeight: 700,
+                          fontFamily: "'Outfit', sans-serif",
+                        }}
+                      >
+                        <span>🎖️</span> SK / Agri-Kagawad
+                      </span>
                     </td>
                     <td style={{ padding: '14px 18px', color: 'var(--text-primary)', fontWeight: 600 }}>
-                      {f.total_scans}
+                      {k.total_scans}
                     </td>
                     <td style={{ padding: '14px 18px', color: 'var(--text-muted)', fontSize: '12px' }}>
-                      {formatReportDate(f.last_report)}
+                      {formatDate(k.date_joined)}
                     </td>
                   </tr>
                 ))
@@ -329,7 +323,7 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
           }}
         >
           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Showing {total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1} to {Math.min(currentPage * PAGE_SIZE, total)} of {total} registered farmers
+            Showing {total === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1} to {Math.min(currentPage * PAGE_SIZE, total)} of {total} Kagawad officers
           </span>
           <div style={{ display: 'flex', gap: '6px' }}>
             <button
@@ -352,8 +346,8 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
                     fontSize: '12px',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    border: currentPage === n ? '1px solid var(--leaf-primary)' : '1px solid var(--border)',
-                    background: currentPage === n ? 'var(--leaf-primary)' : '#ffffff',
+                    border: currentPage === n ? '1px solid #6366f1' : '1px solid var(--border)',
+                    background: currentPage === n ? '#6366f1' : '#ffffff',
                     color: currentPage === n ? '#ffffff' : 'var(--text-secondary)',
                   }}
                 >
@@ -375,4 +369,4 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
   );
 };
 
-export default FarmerTable;
+export default KagawadTable;

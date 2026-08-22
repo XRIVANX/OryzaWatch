@@ -5,6 +5,7 @@ interface TextInputProps {
   name: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  type?: React.HTMLInputTypeAttribute;
   placeholder?: string;
   required?: boolean;
   icon?: React.ReactNode;
@@ -15,6 +16,7 @@ export const TextInput: React.FC<TextInputProps> = ({
   name,
   value,
   onChange,
+  type = 'text',
   placeholder,
   required = true,
   icon,
@@ -30,7 +32,7 @@ export const TextInput: React.FC<TextInputProps> = ({
         </span>
       )}
       <input
-        type="text"
+        type={type}
         name={name}
         value={value}
         onChange={onChange}

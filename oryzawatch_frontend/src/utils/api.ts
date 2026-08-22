@@ -1,6 +1,8 @@
 import axios, { AxiosResponse } from 'axios';
 import type {
   User,
+  UserListItem,
+  UserListResponse,
   Alert,
   DiseaseDetection,
   Farm,
@@ -81,6 +83,11 @@ export const diseaseApi = {
 export const farmApi = {
   list: (): Promise<AxiosResponse<PaginatedResponse<Farm>>> =>
     API.get('farms/'),
+};
+
+export const usersApi = {
+  list: (params?: { role?: string; search?: string; limit?: number; offset?: number }): Promise<AxiosResponse<UserListResponse>> =>
+    API.get('users/', { params }),
 };
 
 export const dashboardApi = {

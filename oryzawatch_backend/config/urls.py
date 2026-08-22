@@ -3,13 +3,13 @@ from django.urls import path, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.static import serve
-from users.views import register_user, login_user, get_user_profile
+from users.views import register_user, login_user, get_user_profile, admin_exists, activity_log_list, initial_setup, list_users
 from diagnostics.views import LeafScanCreateView, LeafScanListView 
 # Import your new analytics views here!
 from analytics.views import ActiveHotspotListView, HotspotDetailView
 from rest_framework_simplejwt.views import TokenRefreshView
 from alerts.views import AlertListView, AlertMarkReadView
-from users.views import register_user, login_user, get_user_profile, admin_exists
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -20,6 +20,11 @@ urlpatterns = [
     path('api/auth/profile/', get_user_profile, name='user_profile'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/admin-exists/', admin_exists, name='admin_exists'),
+    path('api/auth/setup/', initial_setup, name='initial_setup'),
+    path('api/auth/logs/', activity_log_list, name='activity_logs'),
+    
+    # Users List Endpoint (Farmers / Kagawads / Admins)
+    path('api/users/', list_users, name='user_list'),
     
     # Core Diagnostics Scan Endpoints
     path('api/diagnostics/upload/', LeafScanCreateView.as_view(), name='upload_scan'),

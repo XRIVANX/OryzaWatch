@@ -56,7 +56,7 @@ const App: React.FC = () => {
       case 'profile':
         return user ? <ProfileView user={user} onLogOut={handleLogOut} /> : <DashboardView />;
       case 'mao-console':
-        return <MAOConsoleView />;
+        return user ? <MAOConsoleView user={user} /> : <DashboardView />;
       default:
         return <DashboardView />;
     }

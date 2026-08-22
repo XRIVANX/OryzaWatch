@@ -14,6 +14,38 @@ export interface User {
   phone_number?: string;
 }
 
+export interface UserListItem {
+  id: number;
+  user_code: string;
+  username: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  role_display: string;
+  municipality: string;
+  barangay: string;
+  phone_number: string;
+  date_joined: string;
+  total_scans: number;
+  status: 'Critical' | 'At Risk' | 'Monitoring' | 'Safe' | string;
+  disease: string;
+  last_report: string;
+  latest_scan?: {
+    id: number;
+    detected_disease: string;
+    detected_disease_display: string;
+    confidence_score: number;
+    created_at: string;
+  } | null;
+}
+
+export interface UserListResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  results: UserListItem[];
+}
+
 // ─── Registration ─────────────────────────────────────────────────────────────
 
 export interface RegisterPayload {
