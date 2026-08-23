@@ -175,6 +175,16 @@ import os
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# The trained classifier and its class-label metadata are kept outside media uploads.
+AI_MODEL_PATH = config(
+    'AI_MODEL_PATH',
+    default=os.path.join(BASE_DIR, 'ai_models', 'rice_leaf.keras'),
+)
+AI_LABELS_PATH = config(
+    'AI_LABELS_PATH',
+    default=os.path.join(BASE_DIR, 'ai_models', 'rice_leaf_labels.json'),
+)
+
 # Django REST Framework & JWT Configuration Settings
 from datetime import timedelta
 

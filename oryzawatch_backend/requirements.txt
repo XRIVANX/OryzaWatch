@@ -3,6 +3,9 @@ djangorestframework
 djangorestframework-simplejwt
 django-cors-headers
 python-decouple
+Pillow
+numpy
 mysqlclient
 whitenoise
 gunicorn
+tensorflow-cpu

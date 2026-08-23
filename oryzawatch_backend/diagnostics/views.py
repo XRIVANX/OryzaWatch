@@ -1,6 +1,7 @@
 from rest_framework import generics, permissions
 from .models import LeafScan
 from .serializers import LeafScanSerializer
+from .ai import predict_leaf
 
 class LeafScanCreateView(generics.CreateAPIView):
     queryset = LeafScan.objects.all()
@@ -9,7 +10,12 @@ class LeafScanCreateView(generics.CreateAPIView):
 
     # Override the default create method to automatically add the user
     def perform_create(self, serializer):
-        serializer.save(reporter=self.request.user)
+        disease, confidence = predict_leaf(serializer.validated_data['image'])
+        serializer.save(
+            reporter=self.request.user,
+            detected_disease=disease,
+            confidence_score=confidence,
+        )
 
 class LeafScanListView(generics.ListAPIView):
     serializer_class = LeafScanSerializer
