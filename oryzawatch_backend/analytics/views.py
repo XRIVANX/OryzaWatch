@@ -1,7 +1,11 @@
 from rest_framework import generics, permissions
-from .models import DiseaseHotspot
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.db.models import F
+from .models import DiseaseHotspot, ForecastPrediction
 from .serializers import DiseaseHotspotSerializer
 from .permissions import IsManagerOrReadOnly
+from diagnostics.models import LeafScan
 
 class ActiveHotspotListView(generics.ListAPIView):
     """
@@ -23,3 +27,17 @@ class HotspotDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = DiseaseHotspot.objects.all()
     serializer_class = DiseaseHotspotSerializer
     permission_classes = [permissions.IsAuthenticated, IsManagerOrReadOnly]
+
+
+class DashboardStatsView(APIView):
+    """Return dashboard metrics calculated from persisted scan records."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        verified = ForecastPrediction.objects.exclude(verified_disease__isnull=True)
+        verified_count = verified.count()
+        correct_count = verified.filter(predicted_disease=F('verified_disease')).count()
+        return Response({
+            'forecast_accuracy': round(correct_count * 100 / verified_count, 1) if verified_count else None,
+            'verified_forecasts': verified_count,
+        })
