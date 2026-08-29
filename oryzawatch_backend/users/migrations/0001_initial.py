@@ -30,7 +30,7 @@ class Migration(migrations.Migration):
                 ('is_active', models.BooleanField(default=True, help_text='Designates whether this user should be treated as active. Unselect this instead of deleting accounts.', verbose_name='active')),
                 ('date_joined', models.DateTimeField(default=django.utils.timezone.now, verbose_name='date joined')),
                 ('role', models.CharField(choices=[('FARMER', 'Farmer'), ('KAGAWAD', 'SK / Agri-Kagawad'), ('MAO_ADMIN', 'Municipal Agriculture Office Admin')], default='FARMER', max_length=15)),
-                ('municipality', models.CharField(choices=[('ASUNCION', 'Asuncion'), ('CARMEN', 'Carmen')], max_length=15)),
+                ('municipality', models.CharField(choices=[('ASUNCION', 'Asuncion')], max_length=15)),
                 ('barangay', models.CharField(max_length=100)),
                 ('phone_number', models.CharField(blank=True, max_length=15, null=True)),
                 ('groups', models.ManyToManyField(blank=True, help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.', related_name='user_set', related_query_name='user', to='auth.group', verbose_name='groups')),
