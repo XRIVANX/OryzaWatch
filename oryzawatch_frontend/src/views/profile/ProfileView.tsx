@@ -152,7 +152,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onLogOut }) => {
             <div style={{ fontSize: '13.5px', color: 'var(--text-secondary)', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span>📍</span>
               <span>
-                Brgy. {user.barangay || 'Central'}, {user.municipality ? (user.municipality.charAt(0) + user.municipality.slice(1).toLowerCase()) : 'Asuncion'}, Davao del Norte
+                Brgy. {user.barangay || 'Central'}, {user.municipality ? (user.municipality.charAt(0) + user.municipality.slice(1).toLowerCase()) : 'Carmen'}, Davao del Norte
               </span>
             </div>
 
@@ -169,7 +169,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onLogOut }) => {
           <div className="glass-card-interactive" style={{ padding: '18px 20px', backgroundColor: '#ffffff' }}>
             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Active District</div>
             <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px', fontFamily: "'Outfit', sans-serif" }}>
-              {user.municipality || 'ASUNCION'}
+              {user.municipality || 'CARMEN'}
             </div>
             <div style={{ fontSize: '11px', color: 'var(--leaf-primary)', marginTop: '4px', fontWeight: 600 }}>Corridor Zone 1</div>
           </div>
