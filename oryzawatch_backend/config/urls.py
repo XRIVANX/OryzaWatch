@@ -6,7 +6,7 @@ from django.views.static import serve
 from users.views import register_user, login_user, get_user_profile, admin_exists, activity_log_list, initial_setup, list_users
 from diagnostics.views import LeafScanCreateView, LeafScanListView 
 # Import your new analytics views here!
-from analytics.views import ActiveHotspotListView, HotspotDetailView
+from analytics.views import ActiveHotspotListView, HotspotDetailView, DashboardStatsView
 from rest_framework_simplejwt.views import TokenRefreshView
 from alerts.views import AlertListView, AlertMarkReadView
 
@@ -33,6 +33,7 @@ urlpatterns = [
     # Core Spatiotemporal Analytics Endpoints!
     path('api/analytics/hotspots/', ActiveHotspotListView.as_view(), name='active_hotspots'),
     path('api/analytics/hotspots/<int:pk>/', HotspotDetailView.as_view(), name='hotspot_detail'),
+    path('api/dashboard/stats/', DashboardStatsView.as_view(), name='dashboard_stats'),
     
     # Alert Endpoints
     path('api/alerts/', AlertListView.as_view(), name='alert_list'),
