@@ -28,4 +28,25 @@ class DiseaseHotspot(models.Model):
     def __str__(self):
         return f"Hotspot {self.id}: {self.scan.detected_disease} - Status: {self.status}"
 
+
+class ForecastPrediction(models.Model):
+    """A downwind disease forecast and its later field verification."""
+    predicted_disease = models.CharField(max_length=20)
+    predicted_at = models.DateTimeField()
+    forecast_latitude = models.DecimalField(max_digits=9, decimal_places=6)
+    forecast_longitude = models.DecimalField(max_digits=9, decimal_places=6)
+    forecast_radius_km = models.FloatField()
+    wind_direction_deg = models.IntegerField()
+    verified_disease = models.CharField(max_length=20, null=True, blank=True)
+    verified_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    verified_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def is_correct(self):
+        return self.verified_disease is not None and self.verified_disease == self.predicted_disease
+
+    def __str__(self):
+        return f"{self.predicted_disease} forecast ({self.predicted_at:%Y-%m-%d})"
+
 # Create your models here.
