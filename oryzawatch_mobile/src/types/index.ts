@@ -4,7 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type UserRole = 'FARMER' | 'KAGAWAD' | 'MAO_ADMIN';
-export type Municipality = 'ASUNCION';
+export type Municipality = 'ASUNCION' | 'CARMEN';
 
 // From: users/serializers.py → UserSerializer
 export interface User {
