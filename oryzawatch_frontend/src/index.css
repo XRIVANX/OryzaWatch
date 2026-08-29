@@ -6,3 +6,11 @@
 @import './styles/theme.css';
 @import './styles/layout.css';
 @import './styles/modules.css';
+
+.rice-field-map {
+  height: 520px;
+  min-height: 360px;
+  border-radius: 8px;
+  background: #f4f8f4;
+  color: var(--text-secondary);
+}
