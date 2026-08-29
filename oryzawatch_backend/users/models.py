@@ -10,7 +10,6 @@ class User(AbstractUser):
     )
     MUNICIPALITY_CHOICES = (
         ('ASUNCION', 'Asuncion'),
-        ('CARMEN', 'Carmen'),
     )
 
     role = models.CharField(max_length=15, choices=ROLE_CHOICES, default='FARMER')
@@ -52,4 +51,4 @@ class ActivityLog(models.Model):
 
     def __str__(self):
         actor = self.user.username if self.user else 'system'
-        return f"[{self.timestamp:%Y-%m-%d %H:%M:%S}] {actor} — {self.action_type}"
+        return f"[{self.timestamp:%Y-%m-%d %H:%M:%S}] {actor} — {self.action_type}"
