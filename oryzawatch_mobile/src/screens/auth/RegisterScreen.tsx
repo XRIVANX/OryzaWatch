@@ -14,7 +14,7 @@ type Props = {
   navigation: StackNavigationProp<AuthStackParamList, 'Register'>;
 };
 
-const MUNICIPALITIES = ['ASUNCION', 'CARMEN'];
+const MUNICIPALITIES = ['ASUNCION'];
 const ROLES_LIST = [
   { key: ROLES.FARMER, label: 'Farmer' },
   { key: ROLES.KAGAWAD, label: 'SK / Agri-Kagawad' },
