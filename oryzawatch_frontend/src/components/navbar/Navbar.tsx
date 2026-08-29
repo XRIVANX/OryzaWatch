@@ -1,5 +1,4 @@
 import React from 'react';
-import AlertChip from '../common/AlertChip';
 import type { User } from '../../types';
 
 interface NavbarProps {
@@ -30,14 +29,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        {chips ? (
-          chips
-        ) : (
-          <>
-            <AlertChip color="#b45309" bg="#fef3c7" border="#fde68a" icon="💧" label="Humidity 89%" />
-            <AlertChip color="#b91c1c" bg="#fee2e2" border="#fca5a5" icon="🔥" label="2 Hotspots" pulse />
-          </>
-        )}
+        {chips}
       </div>
     </header>
   );
