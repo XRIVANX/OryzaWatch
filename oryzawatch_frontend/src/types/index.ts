@@ -125,6 +125,11 @@ export interface DashboardStats {
   weatherData: WeatherData;
 }
 
+export interface DashboardStatsSummary {
+  forecast_accuracy: number | null;
+  verified_forecasts: number;
+}
+
 // ─── API Response Wrappers ───────────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {
