@@ -39,7 +39,7 @@ export const MAOConsoleView: React.FC<MAOConsoleViewProps> = ({ user }) => {
           </h1>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span>🏛️</span>
-            <span>Municipal Agriculture Office · Asuncion</span>
+            <span>Municipal Agriculture Office · Carmen</span>
           </div>
         </div>
       </header>
