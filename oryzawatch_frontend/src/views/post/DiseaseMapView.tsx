@@ -1,8 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import ThreatAssessment from '../../components/profile/ThreatAssessment';
-import { FIELD_AREAS, FieldAreaKey } from '../../data/diseasemap.data';
+import { FIELD_AREAS, FieldAreaKey, TABS } from '../../data/diseasemap.data';
 
 interface LeafletMap {
   setView(center: [number, number], zoom: number): LeafletMap;
@@ -81,7 +81,8 @@ const RiceFieldMap: React.FC<{ area: FieldAreaKey }> = ({ area }) => {
 };
 
 export const DiseaseMapView: React.FC = () => {
-  const activeArea: FieldAreaKey = 'asuncion';
+  const [activeTab, setActiveTab] = useState<number>(0);
+  const activeArea: FieldAreaKey = activeTab === 0 ? 'carmen' : 'asuncion';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -98,6 +99,26 @@ export const DiseaseMapView: React.FC = () => {
       </header>
 
       <div className="layout-content">
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {TABS.map((tab, index) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(index)}
+              className="btn btn-outline"
+              style={{
+                padding: '8px 18px',
+                background: activeTab === index ? 'var(--leaf-primary)' : '#ffffff',
+                borderColor: activeTab === index ? 'var(--leaf-primary)' : 'var(--border)',
+                color: activeTab === index ? '#ffffff' : 'var(--text-secondary)',
+                fontWeight: activeTab === index ? 700 : 500,
+              }}
+            >
+              {activeTab === index && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#6ee79f' }} />}
+              {tab}
+            </button>
+          ))}
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
           <div className="glass-panel" style={{ padding: '16px', overflow: 'hidden', backgroundColor: '#ffffff' }}>
             <RiceFieldMap area={activeArea} />
