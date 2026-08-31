@@ -46,7 +46,7 @@ const App: React.FC = () => {
   const getPageComponent = (page: string) => {
     switch (page) {
       case 'dashboard':
-        return <DashboardView />;
+        return <DashboardView user={user} />;
       case 'disease-map':
         return <DiseaseMapView />;
       case 'ai-scan':
