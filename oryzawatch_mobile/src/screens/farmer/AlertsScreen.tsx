@@ -1,10 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// AlertsScreen — matches the mockup with CRITICAL / WARNING / INFO cards
+// AlertsScreen — Field Biosecurity Alerts with Botanical Styling
 // ─────────────────────────────────────────────────────────────────────────────
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, FlatList,
-  TouchableOpacity, RefreshControl, ActivityIndicator,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -19,27 +24,31 @@ const SEVERITY_CONFIG: Record<AlertSeverity, {
   titleColor: string;
   borderColor: string;
   bg: string;
+  badgeLabel: string;
 }> = {
   CRITICAL: {
     icon: 'alert-circle',
     iconColor: COLORS.danger,
-    titleColor: COLORS.danger,
+    titleColor: COLORS.dangerText,
     borderColor: COLORS.dangerBorder,
     bg: COLORS.dangerLight,
+    badgeLabel: 'CRITICAL ALERT',
   },
   WARNING: {
     icon: 'warning',
     iconColor: COLORS.warning,
-    titleColor: COLORS.warning,
+    titleColor: COLORS.warningText,
     borderColor: COLORS.warningBorder,
     bg: COLORS.warningLight,
+    badgeLabel: 'FIELD ADVISORY',
   },
   INFO: {
     icon: 'information-circle',
     iconColor: COLORS.info,
-    titleColor: COLORS.info,
+    titleColor: COLORS.infoText,
     borderColor: COLORS.infoBorder,
     bg: COLORS.infoLight,
+    badgeLabel: 'MAO BULLETIN',
   },
 };
 
@@ -82,22 +91,24 @@ export default function AlertsScreen() {
 
   const formatTime = (iso: string) => {
     const d = new Date(iso);
-    return d.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' }) + ' · ' +
+      d.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <OryzaHeader title={`Alerts`} unreadCount={0} />
+      <View style={styles.container}>
+        <OryzaHeader title="Alerts" unreadCount={0} />
         <View style={styles.loadingCenter}>
           <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Fetching field advisories...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.container}>
       <OryzaHeader
         title={`Alerts${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
         unreadCount={unreadCount}
@@ -112,28 +123,36 @@ export default function AlertsScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="notifications-off-outline" size={48} color={COLORS.textMuted} />
-            <Text style={styles.emptyText}>No alerts at this time.</Text>
-            <Text style={styles.emptySubText}>You're all clear! Pull down to refresh.</Text>
+            <View style={styles.emptyIconCircle}>
+              <Ionicons name="checkmark-done" size={32} color={COLORS.primary} />
+            </View>
+            <Text style={styles.emptyText}>All Clear! No Active Alerts</Text>
+            <Text style={styles.emptySubText}>Your farm zone has no reported outbreaks. Pull down to refresh.</Text>
           </View>
         }
         ListFooterComponent={
           alerts.length > 0 ? (
             <View style={styles.tipCard}>
-              <Ionicons name="information-circle-outline" size={16} color={COLORS.info} />
+              <Ionicons name="information-circle-outline" size={18} color={COLORS.primary} />
               <Text style={styles.tipText}>
-                Tip: Turn on push notifications in Profile to get alerts in real-time.
+                Tap any unread alert to acknowledge. Urgent warnings are dispatched by Municipal Agriculture Officers.
               </Text>
             </View>
           ) : null
         }
         renderItem={({ item }) => {
-          const cfg = SEVERITY_CONFIG[item.severity];
+          const cfg = SEVERITY_CONFIG[item.severity] || SEVERITY_CONFIG.INFO;
           return (
             <TouchableOpacity
-              style={[styles.card, { backgroundColor: cfg.bg, borderColor: cfg.borderColor }]}
+              style={[
+                styles.card,
+                {
+                  backgroundColor: item.is_read ? COLORS.white : cfg.bg,
+                  borderColor: cfg.borderColor,
+                },
+              ]}
               onPress={() => !item.is_read && handleMarkRead(item.id)}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
               {/* Unread indicator */}
               {!item.is_read && <View style={styles.unreadDot} />}
@@ -141,40 +160,133 @@ export default function AlertsScreen() {
               <View style={styles.cardHeader}>
                 <Ionicons name={cfg.icon} size={18} color={cfg.iconColor} />
                 <Text style={[styles.cardTitle, { color: cfg.titleColor }]}>{item.title}</Text>
+                <View style={[styles.badge, { backgroundColor: cfg.borderColor }]}>
+                  <Text style={[styles.badgeText, { color: cfg.titleColor }]}>{cfg.badgeLabel}</Text>
+                </View>
               </View>
+
               <Text style={styles.cardMessage}>{item.message}</Text>
-              <Text style={styles.cardTime}>{formatTime(item.created_at)}</Text>
+              <View style={styles.cardFooter}>
+                <Ionicons name="time-outline" size={13} color={COLORS.textMuted} />
+                <Text style={styles.cardTime}>{formatTime(item.created_at)}</Text>
+              </View>
             </TouchableOpacity>
           );
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: COLORS.background },
-  loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  listContent: { padding: 16, paddingBottom: 32 },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10 },
+  loadingText: { fontSize: 13, color: COLORS.textMuted, fontWeight: '600' },
+  listContent: { padding: 16, paddingBottom: 36 },
   card: {
-    borderWidth: 1.5, borderRadius: 14, padding: 16, marginBottom: 12,
+    borderWidth: 1.2,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
     position: 'relative',
+    shadowColor: '#12301c',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   unreadDot: {
-    position: 'absolute', top: 14, right: 14,
-    width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.primary,
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.primary,
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  cardTitle: { fontSize: 14, fontWeight: '700', flex: 1 },
-  cardMessage: { fontSize: 13, color: COLORS.textPrimary, lineHeight: 20, marginBottom: 8 },
-  cardTime: { fontSize: 11, color: COLORS.textMuted },
-  emptyContainer: { alignItems: 'center', paddingVertical: 60 },
-  emptyText: { fontSize: 16, fontWeight: '600', color: COLORS.textSecondary, marginTop: 16 },
-  emptySubText: { fontSize: 13, color: COLORS.textMuted, marginTop: 6 },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    flex: 1,
+    letterSpacing: -0.2,
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  cardMessage: {
+    fontSize: 13,
+    color: COLORS.textPrimary,
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  cardTime: {
+    fontSize: 11,
+    color: COLORS.textMuted,
+    fontWeight: '500',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 24,
+  },
+  emptyIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: COLORS.primaryBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.primaryPastel,
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+  },
+  emptySubText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 19,
+  },
   tipCard: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
-    backgroundColor: COLORS.infoLight, borderWidth: 1,
-    borderColor: COLORS.infoBorder, borderRadius: 12, padding: 14, marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: COLORS.primaryBg,
+    borderWidth: 1,
+    borderColor: COLORS.primaryPastel,
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 6,
   },
-  tipText: { flex: 1, fontSize: 12, color: '#1e40af', lineHeight: 18 },
+  tipText: {
+    flex: 1,
+    fontSize: 12,
+    color: COLORS.primary,
+    lineHeight: 18,
+    fontWeight: '500',
+  },
 });
