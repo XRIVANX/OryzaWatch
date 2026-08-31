@@ -5,11 +5,16 @@ import ActivityFeed from '../../components/feed/ActivityFeed';
 import WeatherWidget from '../../components/feed/WeatherWidget';
 import { STATS } from '../../data/dashbaord.data';
 import type { StatItem } from '../../data/dashbaord.data';
+import type { User } from '../../types';
 
-export const DashboardView: React.FC = () => {
+interface DashboardViewProps { user?: User | null; }
+
+export const DashboardView: React.FC<DashboardViewProps> = ({ user }) => {
+  const municipality = user?.municipality || 'ASUNCION';
+  const municipalityLabel = municipality.charAt(0).toUpperCase() + municipality.slice(1).toLowerCase();
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Top bar */}
       <header className="layout-topbar">
         <div>
           <h1 style={{ fontSize: '19px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'Outfit', sans-serif" }}>
@@ -17,7 +22,7 @@ export const DashboardView: React.FC = () => {
           </h1>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span>🌱</span>
-            <span>Asuncion-Carmen Corridor · Davao del Norte</span>
+            <span>{municipalityLabel} · Davao del Norte</span>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -26,26 +31,16 @@ export const DashboardView: React.FC = () => {
         </div>
       </header>
 
-      {/* Content */}
       <div className="layout-content">
-        {/* Stat Cards */}
         <div className="grid-stats-4">
           {STATS.map((stat: StatItem, i: number) => (
-            <StatCard
-              key={i}
-              value={stat.value}
-              label={stat.label}
-              sub={stat.sub}
-              subColor={stat.subColor}
-              icon={i === 0 ? '🔥' : i === 1 ? '🌾' : i === 2 ? '🎯' : '🔔'}
-            />
+            <StatCard key={i} value={stat.value} label={stat.label} sub={stat.sub} subColor={stat.subColor}
+              icon={i === 0 ? '🔥' : i === 1 ? '🌾' : i === 2 ? '🎯' : '🔔'} />
           ))}
         </div>
-
-        {/* Bottom Two Panels */}
         <div className="grid-cols-2">
           <ActivityFeed />
-          <WeatherWidget />
+          <WeatherWidget municipality={municipality} />
         </div>
       </div>
     </div>
