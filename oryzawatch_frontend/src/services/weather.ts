@@ -23,9 +23,16 @@ const toCompassDirection = (degrees: number): string => {
   return directions[Math.round(degrees / 45) % directions.length];
 };
 
-export async function fetchAsuncionWeather(signal?: AbortSignal): Promise<CurrentWeather> {
+const WEATHER_LOCATIONS: Record<string, { latitude: string; longitude: string }> = {
+  ASUNCION: { latitude: '7.45', longitude: '125.57' },
+  // Carmen, Davao del Norte town center
+  CARMEN: { latitude: '7.36', longitude: '125.70' },
+};
+
+export async function fetchWeather(municipality: string, signal?: AbortSignal): Promise<CurrentWeather> {
+  const location = WEATHER_LOCATIONS[municipality.trim().toUpperCase()] ?? WEATHER_LOCATIONS.ASUNCION;
   const params = new URLSearchParams({
-    latitude: '7.45', longitude: '125.57',
+    latitude: location.latitude, longitude: location.longitude,
     current: 'temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m',
     timezone: 'Asia/Manila', forecast_days: '1',
   });
@@ -40,4 +47,9 @@ export async function fetchAsuncionWeather(signal?: AbortSignal): Promise<Curren
     precipitation: current.precipitation, weatherCode: current.weather_code,
     description: weatherDescriptions[current.weather_code] ?? 'Current conditions', observedAt: current.time,
   };
+}
+
+// Kept for callers that still need the original Asuncion-specific helper.
+export function fetchAsuncionWeather(signal?: AbortSignal): Promise<CurrentWeather> {
+  return fetchWeather('ASUNCION', signal);
 }
