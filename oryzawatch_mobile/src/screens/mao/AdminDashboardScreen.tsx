@@ -1,7 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, ScrollView,
-  RefreshControl, ActivityIndicator,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import OryzaHeader from '../../components/common/OryzaHeader';
@@ -28,10 +32,14 @@ export default function AdminDashboardScreen() {
       setHotspots(h);
       setAlerts(a);
       setScanCount(s.length);
-    } catch (e) { console.warn('AdminDashboard error:', e); }
+    } catch (e) {
+      console.warn('AdminDashboard error:', e);
+    }
   }, []);
 
-  useEffect(() => { fetchData().finally(() => setLoading(false)); }, [fetchData]);
+  useEffect(() => {
+    fetchData().finally(() => setLoading(false));
+  }, [fetchData]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -44,17 +52,21 @@ export default function AdminDashboardScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <OryzaHeader title="MAO Dashboard" />
-        <View style={styles.loadingCenter}><ActivityIndicator size="large" color={COLORS.primary} /></View>
-      </SafeAreaView>
+      <View style={styles.container}>
+        <OryzaHeader title="MAO Portal" />
+        <View style={styles.loadingCenter}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Loading MAO command metrics...</Text>
+        </View>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.container}>
       <OryzaHeader title="MAO Dashboard" unreadCount={unreadCount} />
       <ScrollView
+        style={styles.scroll}
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
         showsVerticalScrollIndicator={false}
@@ -63,55 +75,76 @@ export default function AdminDashboardScreen() {
         <View style={styles.statsRow}>
           <StatCard icon="alert-circle" label="Critical Hotspots" value={criticalCount} color={COLORS.danger} />
           <StatCard icon="scan" label="Total Scans" value={scanCount} color={COLORS.primary} />
-          <StatCard icon="notifications" label="Unread Alerts" value={unreadCount} color={COLORS.warning} />
+          <StatCard icon="notifications" label="Field Alerts" value={alerts.length} color={COLORS.warning} />
         </View>
 
         {/* ── Active Hotspots ────────────────────────────── */}
-        <Text style={styles.sectionLabel}>ACTIVE HOTSPOTS</Text>
+        <Text style={styles.sectionLabel}>ACTIVE EPIDEMIOLOGICAL HOTSPOTS</Text>
         {hotspots.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Ionicons name="checkmark-circle-outline" size={32} color={COLORS.success} />
-            <Text style={styles.emptyText}>No active hotspots. All clear!</Text>
+            <Ionicons name="checkmark-circle-outline" size={36} color={COLORS.success} />
+            <Text style={styles.emptyTitle}>Zero Active Hotspots</Text>
+            <Text style={styles.emptyText}>Municipal rice clusters are currently within safe thresholds.</Text>
           </View>
         ) : (
-          hotspots.map((h) => (
-            <View key={h.id} style={styles.hotspotCard}>
-              <View style={styles.hotspotHeader}>
-                <View style={[styles.statusDot, { backgroundColor: HOTSPOT_STATUS[h.status]?.color ?? COLORS.textMuted }]} />
-                <Text style={styles.hotspotTitle}>
-                  {DISEASE_LABELS[h.scan.detected_disease] || h.scan.detected_disease}
-                </Text>
-                <Text style={[styles.hotspotStatus, { color: HOTSPOT_STATUS[h.status]?.color ?? COLORS.textMuted }]}>
-                  {HOTSPOT_STATUS[h.status]?.label ?? h.status}
-                </Text>
+          hotspots.map((h) => {
+            const diseaseName = DISEASE_LABELS[h.scan.detected_disease] || h.scan.detected_disease;
+            const statusCfg = HOTSPOT_STATUS[h.status] || { label: h.status, color: COLORS.textMuted };
+            return (
+              <View key={h.id} style={styles.hotspotCard}>
+                <View style={styles.hotspotHeader}>
+                  <View style={[styles.statusDot, { backgroundColor: statusCfg.color }]} />
+                  <Text style={styles.hotspotTitle}>{diseaseName}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: statusCfg.color + '15', borderColor: statusCfg.color }]}>
+                    <Text style={[styles.hotspotStatus, { color: statusCfg.color }]}>
+                      {statusCfg.label}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.hotspotMeta}>
+                  <View style={styles.metaChip}><Text style={styles.metaText}>🌡 {h.temperature.toFixed(1)}°C</Text></View>
+                  <View style={styles.metaChip}><Text style={styles.metaText}>💧 {h.humidity.toFixed(0)}% Hum</Text></View>
+                  <View style={styles.metaChip}><Text style={styles.metaText}>💨 {h.wind_cardinal} {h.wind_speed.toFixed(0)} km/h</Text></View>
+                  <View style={styles.metaChip}><Text style={styles.metaText}>📍 {h.spread_velocity.toFixed(1)} km/d spread</Text></View>
+                </View>
               </View>
-              <View style={styles.hotspotMeta}>
-                <Text style={styles.metaText}>🌡 {h.temperature.toFixed(1)}°C</Text>
-                <Text style={styles.metaText}>💧 {h.humidity.toFixed(0)}%</Text>
-                <Text style={styles.metaText}>💨 {h.wind_cardinal} {h.wind_speed.toFixed(0)} km/h</Text>
-                <Text style={styles.metaText}>📍 Spread: {h.spread_velocity.toFixed(1)} km/day</Text>
+            );
+          })
+        )}
+
+        {/* ── Recent Alerts ──────────────────────────────── */}
+        <Text style={styles.sectionLabel}>RECENT FIELD BULLETINS</Text>
+        {alerts.length === 0 ? (
+          <View style={styles.emptyAlertsCard}>
+            <Text style={styles.emptyText}>No field bulletins logged.</Text>
+          </View>
+        ) : (
+          alerts.slice(0, 5).map((a) => (
+            <View key={a.id} style={[styles.alertRow, { opacity: a.is_read ? 0.7 : 1 }]}>
+              <View
+                style={[
+                  styles.alertIconCircle,
+                  {
+                    backgroundColor: a.severity === 'CRITICAL' ? COLORS.dangerLight : COLORS.warningLight,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={a.severity === 'CRITICAL' ? 'alert-circle' : 'warning'}
+                  size={18}
+                  color={a.severity === 'CRITICAL' ? COLORS.danger : COLORS.warning}
+                />
+              </View>
+              <View style={styles.alertInfo}>
+                <Text style={styles.alertTitle}>{a.title}</Text>
+                <Text style={styles.alertMsg} numberOfLines={2}>{a.message}</Text>
               </View>
             </View>
           ))
         )}
-
-        {/* ── Recent Alerts ──────────────────────────────── */}
-        <Text style={styles.sectionLabel}>RECENT ALERTS</Text>
-        {alerts.slice(0, 5).map((a) => (
-          <View key={a.id} style={[styles.alertRow, { opacity: a.is_read ? 0.6 : 1 }]}>
-            <Ionicons
-              name={a.severity === 'CRITICAL' ? 'alert-circle' : 'warning'}
-              size={16}
-              color={a.severity === 'CRITICAL' ? COLORS.danger : COLORS.warning}
-            />
-            <View style={styles.alertInfo}>
-              <Text style={styles.alertTitle}>{a.title}</Text>
-              <Text style={styles.alertMsg} numberOfLines={1}>{a.message}</Text>
-            </View>
-          </View>
-        ))}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -121,7 +154,9 @@ function StatCard({ icon, label, value, color }: {
 }) {
   return (
     <View style={[statStyles.card, { borderTopColor: color }]}>
-      <Ionicons name={icon} size={22} color={color} />
+      <View style={[statStyles.iconCircle, { backgroundColor: color + '15' }]}>
+        <Ionicons name={icon} size={18} color={color} />
+      </View>
       <Text style={statStyles.value}>{value}</Text>
       <Text style={statStyles.label}>{label}</Text>
     </View>
@@ -130,42 +165,121 @@ function StatCard({ icon, label, value, color }: {
 
 const statStyles = StyleSheet.create({
   card: {
-    flex: 1, backgroundColor: COLORS.white, borderRadius: 12,
-    padding: 14, alignItems: 'center', borderTopWidth: 3,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06, shadowRadius: 6, elevation: 3,
+    flex: 1,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    borderTopWidth: 3.5,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#12301c',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  value: { fontSize: 28, fontWeight: '800', color: COLORS.textPrimary, marginTop: 8 },
-  label: { fontSize: 10, color: COLORS.textSecondary, textAlign: 'center', marginTop: 4, fontWeight: '600' },
+  iconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  value: { fontSize: 24, fontWeight: '800', color: COLORS.textPrimary },
+  label: { fontSize: 9.5, color: COLORS.textSecondary, textAlign: 'center', marginTop: 2, fontWeight: '700' },
 });
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: COLORS.background },
-  loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  scroll: { flex: 1 },
+  loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10 },
+  loadingText: { fontSize: 13, color: COLORS.textMuted, fontWeight: '600' },
   content: { padding: 16, paddingBottom: 40 },
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
-  sectionLabel: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, letterSpacing: 1, marginBottom: 10 },
+  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.textMuted,
+    letterSpacing: 0.8,
+    marginBottom: 10,
+    marginLeft: 2,
+  },
   hotspotCard: {
-    backgroundColor: COLORS.white, borderRadius: 12, padding: 14,
-    marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#12301c',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  hotspotHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
-  statusDot: { width: 10, height: 10, borderRadius: 5 },
-  hotspotTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
-  hotspotStatus: { fontSize: 12, fontWeight: '600' },
-  hotspotMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  metaText: { fontSize: 12, color: COLORS.textSecondary },
+  hotspotHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  hotspotTitle: { flex: 1, fontSize: 14, fontWeight: '800', color: COLORS.textPrimary },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  hotspotStatus: { fontSize: 10, fontWeight: '800' },
+  hotspotMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  metaChip: {
+    backgroundColor: COLORS.background,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  metaText: { fontSize: 11.5, color: COLORS.textSecondary, fontWeight: '600' },
   emptyCard: {
-    backgroundColor: COLORS.white, borderRadius: 12, padding: 24,
-    alignItems: 'center', gap: 10, marginBottom: 24,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  emptyText: { fontSize: 14, color: COLORS.textSecondary, fontWeight: '500' },
+  emptyTitle: { fontSize: 15, fontWeight: '800', color: COLORS.textPrimary },
+  emptyText: { fontSize: 12.5, color: COLORS.textSecondary, textAlign: 'center' },
+  emptyAlertsCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
   alertRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-    backgroundColor: COLORS.white, borderRadius: 10, padding: 12, marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  alertIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   alertInfo: { flex: 1 },
-  alertTitle: { fontSize: 13, fontWeight: '700', color: COLORS.textPrimary },
-  alertMsg: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2 },
+  alertTitle: { fontSize: 13, fontWeight: '800', color: COLORS.textPrimary },
+  alertMsg: { fontSize: 12, color: COLORS.textSecondary, marginTop: 2, lineHeight: 17 },
 });
