@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// LoginScreen — matches the OryzaWatch mobile mockup exactly
+// LoginScreen — Botanical Theme Matching Web Portal
 // ─────────────────────────────────────────────────────────────────────────────
 import React, { useState } from 'react';
 import {
@@ -8,17 +8,18 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   Alert,
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { AuthStackParamList } from '../../navigation/AuthStack';
 import { useAuth } from '../../hooks/useAuth';
+import OryzaLogo from '../../components/common/OryzaLogo';
 import { COLORS, API_BASE_URL } from '../../utils/constants';
 
 type Props = {
@@ -40,7 +41,6 @@ export default function LoginScreen({ navigation }: Props) {
     setIsSubmitting(true);
     try {
       await login(username.trim(), password);
-      // Navigation happens automatically via AppNavigator once user is set
     } catch (err: any) {
       Alert.alert('Sign In Failed', err.message || 'Invalid credentials. Please try again.');
     } finally {
@@ -49,9 +49,9 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
       >
         <ScrollView
@@ -59,66 +59,76 @@ export default function LoginScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* ── Card ─────────────────────────────────────── */}
+          {/* ── Brand Card ─────────────────────────────────── */}
           <View style={styles.card}>
-
-            {/* Logo */}
-            <View style={styles.logoContainer}>
-              <View style={styles.logoCircle}>
-                <Text style={styles.logoEmoji}>🌾</Text>
-              </View>
-              <Text style={styles.logoName}>OryzaWatch</Text>
-              <Text style={styles.logoTagline}>PREDICT. ALERT. PROTECT.</Text>
+            {/* Authentic OryzaWatch Web Emblem Logo */}
+            <View style={styles.logoWrapper}>
+              <OryzaLogo size={110} showText={true} />
             </View>
 
             {/* Heading */}
-            <Text style={styles.heading}>Sign In</Text>
-            <Text style={styles.subheading}>Spatiotemporal Rice Diagnostic Portal</Text>
+            <Text style={styles.heading}>OryzaWatch</Text>
+            <Text style={styles.subheading}>
+            <Text style={{ color: '#B8860B', fontWeight: 'bold' }}>
+            PREDICT. ALERT. PROTECT.
+            </Text>
+            </Text> 
 
-            {/* Username */}
-            <Text style={styles.label}>Username</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your system username"
-              placeholderTextColor={COLORS.textMuted}
-              value={username}
-              onChangeText={setUsername}
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="next"
-            />
 
-            {/* Password */}
-            <Text style={styles.label}>Password</Text>
-            <View style={styles.passwordWrapper}>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder="••••••••"
-                placeholderTextColor={COLORS.textMuted}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                returnKeyType="done"
-                onSubmitEditing={handleLogin}
-              />
-              <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeBtn}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={COLORS.textSecondary}
+
+            {/* Username Field */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Username</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="person-outline" size={18} color={COLORS.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your system username"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={username}
+                  onChangeText={setUsername}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="next"
                 />
-              </TouchableOpacity>
+              </View>
             </View>
 
-            {/* Submit */}
+            {/* Password Field */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Password</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={18} color={COLORS.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeBtn}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={COLORS.textMuted}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Sign In Button */}
             <TouchableOpacity
               style={[styles.signInBtn, isSubmitting && styles.signInBtnDisabled]}
               onPress={handleLogin}
               disabled={isSubmitting}
-              activeOpacity={0.85}
+              activeOpacity={0.88}
             >
               {isSubmitting ? (
                 <ActivityIndicator color={COLORS.white} />
@@ -135,9 +145,12 @@ export default function LoginScreen({ navigation }: Props) {
               </TouchableOpacity>
             </View>
 
-            {/* Footer */}
-            <Text style={styles.footer}>MAO Field Operations · Davao del Norte</Text>
-            <Text style={[styles.footer, { marginTop: 4, opacity: 0.7 }]}>API: {API_BASE_URL}</Text>
+            {/* Footer Notice */}
+            <View style={styles.footerNotice}>
+              <Ionicons name="shield-checkmark-outline" size={14} color={COLORS.primary} />
+              <Text style={styles.footer}>MAO Field Operations · Davao del Norte</Text>
+            </View>
+            <Text style={styles.apiText}>API: {API_BASE_URL}</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -148,127 +161,105 @@ export default function LoginScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#e8ede8',
+    backgroundColor: COLORS.background,
   },
   flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 32,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
   card: {
     backgroundColor: COLORS.white,
     borderRadius: 20,
-    padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: '#12301c',
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
     shadowRadius: 16,
-    elevation: 6,
+    elevation: 4,
   },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 28,
-  },
-  logoCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: '#1b4332',
+  logoWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
-  },
-  logoEmoji: {
-    fontSize: 44,
-  },
-  logoName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1b4332',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  logoTagline: {
-    fontSize: 10,
-    color: '#f59e0b',
-    fontWeight: '600',
-    letterSpacing: 1.5,
+    marginBottom: 16,
+    height: 110,
   },
   heading: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
     color: COLORS.textPrimary,
+    textAlign: 'center',
     marginBottom: 4,
+    letterSpacing: -0.3,
   },
   subheading: {
-    fontSize: 13,
+    fontSize: 12.5,
     color: COLORS.textSecondary,
-    marginBottom: 24,
+    textAlign: 'center',
+    marginBottom: 22,
+  },
+  inputGroup: {
+    marginBottom: 16,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: COLORS.textPrimary,
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    fontSize: 14,
-    color: COLORS.textPrimary,
-    backgroundColor: COLORS.white,
-    marginBottom: 20,
-  },
-  passwordWrapper: {
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 1.2,
     borderColor: COLORS.border,
-    borderRadius: 10,
-    marginBottom: 24,
+    borderRadius: 12,
     backgroundColor: COLORS.white,
+    paddingHorizontal: 12,
   },
-  passwordInput: {
+  inputIcon: {
+    marginRight: 8,
+  },
+  input: {
     flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    paddingVertical: 12,
     fontSize: 14,
     color: COLORS.textPrimary,
   },
   eyeBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    padding: 6,
   },
   signInBtn: {
-    backgroundColor: '#2d6a4f',
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 14,
     alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#2d6a4f',
+    marginTop: 8,
+    marginBottom: 18,
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
   },
   signInBtnDisabled: {
     opacity: 0.65,
   },
   signInText: {
     color: COLORS.white,
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
     letterSpacing: 0.3,
   },
   registerRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: 18,
   },
   registerPrompt: {
     fontSize: 13,
@@ -280,9 +271,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textDecorationLine: 'underline',
   },
+  footerNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
   footer: {
-    textAlign: 'center',
     fontSize: 11,
     color: COLORS.textMuted,
+    fontWeight: '500',
+  },
+  apiText: {
+    textAlign: 'center',
+    fontSize: 10,
+    color: COLORS.textMuted,
+    marginTop: 4,
+    opacity: 0.7,
   },
 });
