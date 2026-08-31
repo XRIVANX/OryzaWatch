@@ -10,7 +10,7 @@ interface Props {
 export default function AlertBanner({ message }: Props) {
   return (
     <View style={styles.container}>
-      <Ionicons name="warning-outline" size={18} color={COLORS.warning} style={styles.icon} />
+      <Ionicons name="warning" size={18} color={COLORS.warning} style={styles.icon} />
       <Text style={styles.text}>{message}</Text>
     </View>
   );
@@ -21,22 +21,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: COLORS.warningLight,
-    borderWidth: 1,
+    borderWidth: 1.2,
     borderColor: COLORS.warningBorder,
-    borderRadius: 10,
+    borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginBottom: 16,
+    shadowColor: COLORS.warning,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   icon: {
-    marginRight: 8,
+    marginRight: 10,
     marginTop: 1,
   },
   text: {
     flex: 1,
     fontSize: 13,
-    color: '#92400e',
-    lineHeight: 20,
-    fontWeight: '500',
+    color: COLORS.warningText,
+    lineHeight: 19,
+    fontWeight: '700',
   },
 });
