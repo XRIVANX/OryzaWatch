@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../hooks/useAuth';
 import { COLORS, ROLES } from '../utils/constants';
 
@@ -16,7 +17,7 @@ import AdminDashboardScreen from '../screens/mao/AdminDashboardScreen';
 export type MainTabParamList = {
   Home: undefined;
   Map: undefined;
-  Report: undefined;   // Kagawad only
+  Report: undefined;   // Kagawad / Admin only
   Alerts: undefined;
   Profile: undefined;
 };
@@ -26,7 +27,7 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const TAB_ICONS: Record<string, { active: IoniconName; inactive: IoniconName }> = {
-  Home: { active: 'home', inactive: 'home-outline' },
+  Home: { active: 'leaf', inactive: 'leaf-outline' },
   Map: { active: 'map', inactive: 'map-outline' },
   Report: { active: 'document-text', inactive: 'document-text-outline' },
   Alerts: { active: 'notifications', inactive: 'notifications-outline' },
@@ -35,7 +36,11 @@ const TAB_ICONS: Record<string, { active: IoniconName; inactive: IoniconName }> 
 
 export default function MainTabs() {
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const role = user?.role;
+
+  const bottomInset = Math.max(insets.bottom, Platform.OS === 'ios' ? 16 : 8);
+  const tabHeight = 58 + bottomInset;
 
   return (
     <Tab.Navigator
@@ -47,22 +52,28 @@ export default function MainTabs() {
           backgroundColor: COLORS.white,
           borderTopColor: COLORS.border,
           borderTopWidth: 1,
-          paddingBottom: 4,
-          paddingTop: 4,
-          height: 60,
+          paddingBottom: bottomInset,
+          paddingTop: 6,
+          height: tabHeight,
+          elevation: 8,
+          shadowColor: '#12301c',
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.05,
+          shadowRadius: 8,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '600',
+          fontWeight: '700',
+          letterSpacing: 0.1,
         },
         tabBarIcon: ({ focused, color, size }) => {
-          const icons = TAB_ICONS[route.name];
+          const icons = TAB_ICONS[route.name] || { active: 'ellipse', inactive: 'ellipse-outline' };
           const iconName = focused ? icons.active : icons.inactive;
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
     >
-      {/* MAO_ADMIN gets a special dashboard as the "Home" tab */}
+      {/* MAO_ADMIN gets dashboard as Home */}
       {role === ROLES.MAO_ADMIN ? (
         <Tab.Screen
           name="Home"
@@ -75,7 +86,7 @@ export default function MainTabs() {
 
       <Tab.Screen name="Map" component={MapScreen} />
 
-      {/* Kagawad-only "Submit Report" tab */}
+      {/* Kagawad / Admin "Submit Report" tab */}
       {(role === ROLES.KAGAWAD || role === ROLES.MAO_ADMIN) && (
         <Tab.Screen
           name="Report"
