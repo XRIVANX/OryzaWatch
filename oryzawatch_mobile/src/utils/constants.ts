@@ -2,7 +2,17 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 const getBaseUrl = (): string => {
-  // 1. Auto-detect PC IP address from Expo Go bundler URI
+  // 1. Explicit override — required for standalone builds (APK/IPA) where there is
+  //    no Metro bundler to auto-detect. Set in eas.json `env` or app.json `extra`.
+  //    EXPO_PUBLIC_* vars are inlined into the bundle at build time.
+  const configured =
+    process.env.EXPO_PUBLIC_API_URL ||
+    (Constants.expoConfig?.extra as { apiUrl?: string } | undefined)?.apiUrl;
+  if (configured) {
+    return configured.replace(/\/+$/, '');
+  }
+
+  // 2. Auto-detect PC IP from the Metro bundler URI (Expo Go / dev client only)
   const hostUri = Constants.expoConfig?.hostUri || (Constants as any).experienceUrl;
   if (hostUri) {
     const ip = hostUri.split(':')[0];
@@ -10,11 +20,11 @@ const getBaseUrl = (): string => {
       return `http://${ip}:8000`;
     }
   }
-  // 2. Android Emulator fallback
+  // 3. Android Emulator fallback
   if (Platform.OS === 'android') {
     return 'http://10.0.2.2:8000';
   }
-  // 3. iOS Simulator / Web fallback
+  // 4. iOS Simulator / Web fallback
   return 'http://127.0.0.1:8000';
 };
 

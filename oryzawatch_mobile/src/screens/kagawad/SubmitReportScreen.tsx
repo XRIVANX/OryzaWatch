@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -16,14 +17,68 @@ import * as Location from 'expo-location';
 
 import OryzaHeader from '../../components/common/OryzaHeader';
 import { diagnosticsApi } from '../../api/diagnostics';
-import { COLORS } from '../../utils/constants';
+import { COLORS, DISEASE_LABELS } from '../../utils/constants';
+import {
+  classifyLeafFromBase64,
+  isOnDeviceAvailable,
+  onDeviceUnavailableReason,
+  warmUpLeafModel,
+  type LocalDiagnosis,
+} from '../../ml/leafModel';
+import type { LeafScan } from '../../types';
+
+const DISEASE_COLOR: Record<string, string> = {
+  HEALTHY: COLORS.success,
+  BLB: COLORS.danger,
+  BLAST: COLORS.warning,
+};
 
 export default function SubmitReportScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imageName, setImageName] = useState('leaf.jpg');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const onDeviceSupported = isOnDeviceAvailable();
+  const [onDeviceEnabled, setOnDeviceEnabled] = useState(onDeviceSupported);
+  const [localDx, setLocalDx] = useState<LocalDiagnosis | null>(null);
+  const [localDxRunning, setLocalDxRunning] = useState(false);
+  const [localDxError, setLocalDxError] = useState<string | null>(null);
+  const [serverDx, setServerDx] = useState<Pick<LeafScan, 'detected_disease' | 'confidence_score'> | null>(null);
+
+  useEffect(() => {
+    if (onDeviceSupported) warmUpLeafModel();
+  }, [onDeviceSupported]);
+
+  const runLocalDiagnosis = async (base64: string | null) => {
+    if (!base64 || !onDeviceEnabled || !onDeviceSupported) return;
+    setLocalDxRunning(true);
+    setLocalDxError(null);
+    setLocalDx(null);
+    try {
+      setLocalDx(await classifyLeafFromBase64(base64));
+    } catch (e: any) {
+      setLocalDxError(e?.message ?? 'On-device diagnosis failed.');
+    } finally {
+      setLocalDxRunning(false);
+    }
+  };
+
+  const acceptPickerResult = (
+    result: ImagePicker.ImagePickerResult,
+    fallbackName: string,
+  ) => {
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setImageUri(asset.uri);
+    setImageBase64(asset.base64 ?? null);
+    setImageName(asset.fileName ?? fallbackName);
+    setSubmitted(false);
+    setServerDx(null);
+    void runLocalDiagnosis(asset.base64 ?? null);
+  };
 
   const pickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -36,12 +91,9 @@ export default function SubmitReportScreen() {
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
+      base64: true,
     });
-    if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri);
-      setImageName(result.assets[0].fileName ?? 'leaf.jpg');
-      setSubmitted(false);
-    }
+    acceptPickerResult(result, 'leaf.jpg');
   };
 
   const takePhoto = async () => {
@@ -54,11 +106,25 @@ export default function SubmitReportScreen() {
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
+      base64: true,
     });
-    if (!result.canceled && result.assets[0]) {
-      setImageUri(result.assets[0].uri);
-      setImageName(result.assets[0].fileName ?? `leaf_${Date.now()}.jpg`);
-      setSubmitted(false);
+    acceptPickerResult(result, `leaf_${Date.now()}.jpg`);
+  };
+
+  const clearImage = () => {
+    setImageUri(null);
+    setImageBase64(null);
+    setLocalDx(null);
+    setLocalDxError(null);
+    setServerDx(null);
+  };
+
+  const toggleOnDevice = (value: boolean) => {
+    setOnDeviceEnabled(value);
+    if (value) void runLocalDiagnosis(imageBase64);
+    else {
+      setLocalDx(null);
+      setLocalDxError(null);
     }
   };
 
@@ -76,15 +142,16 @@ export default function SubmitReportScreen() {
         lat = loc.coords.latitude;
         lng = loc.coords.longitude;
       }
-      await diagnosticsApi.uploadScan({
+      const scan = await diagnosticsApi.uploadScan({
         imageUri,
         imageName,
         imageType: 'image/jpeg',
         latitude: lat,
         longitude: lng,
       });
+      setServerDx({ detected_disease: scan.detected_disease, confidence_score: scan.confidence_score });
       setSubmitted(true);
-      setImageUri(null);
+      clearImage();
       setNotes('');
     } catch (e: any) {
       Alert.alert('Submission Failed', e.message || 'Please try again.');
@@ -107,6 +174,12 @@ export default function SubmitReportScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.successTitle}>Report Dispatched Successfully!</Text>
               <Text style={styles.successDesc}>The diagnostic sample has been logged and the MAO dashboard notified.</Text>
+              {serverDx && (
+                <Text style={styles.successDesc}>
+                  Server diagnosis: {DISEASE_LABELS[serverDx.detected_disease] ?? serverDx.detected_disease}
+                  {' '}({(serverDx.confidence_score * 100).toFixed(1)}%)
+                </Text>
+              )}
             </View>
           </View>
         )}
@@ -118,7 +191,7 @@ export default function SubmitReportScreen() {
         {imageUri ? (
           <View style={styles.previewContainer}>
             <Image source={{ uri: imageUri }} style={styles.preview} resizeMode="cover" />
-            <TouchableOpacity style={styles.retakeBtn} onPress={() => setImageUri(null)} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.retakeBtn} onPress={clearImage} activeOpacity={0.7}>
               <Ionicons name="trash-outline" size={16} color={COLORS.danger} />
               <Text style={styles.retakeBtnText}>Remove Photo</Text>
             </TouchableOpacity>
@@ -139,6 +212,75 @@ export default function SubmitReportScreen() {
               <Text style={styles.pickerBtnText}>Choose from Library</Text>
               <Text style={styles.pickerBtnSub}>Select Gallery Image</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* On-device (offline) diagnosis */}
+        <View style={styles.odRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.odTitle}>On-device diagnosis</Text>
+            <Text style={styles.odSub}>
+              {onDeviceSupported
+                ? 'Runs the bundled AI model offline for an instant field estimate.'
+                : onDeviceUnavailableReason()}
+            </Text>
+          </View>
+          <Switch
+            value={onDeviceEnabled}
+            onValueChange={toggleOnDevice}
+            disabled={!onDeviceSupported}
+            trackColor={{ true: COLORS.primaryBright, false: COLORS.border }}
+            thumbColor={COLORS.white}
+          />
+        </View>
+
+        {onDeviceEnabled && onDeviceSupported && (localDxRunning || localDx || localDxError) && (
+          <View style={styles.dxCard}>
+            {localDxRunning && (
+              <View style={styles.dxRunning}>
+                <ActivityIndicator color={COLORS.primary} />
+                <Text style={styles.dxRunningText}>Analyzing leaf on device…</Text>
+              </View>
+            )}
+
+            {!localDxRunning && localDxError && (
+              <Text style={styles.dxErrorText}>
+                <Ionicons name="warning-outline" size={13} color={COLORS.danger} /> {localDxError}
+              </Text>
+            )}
+
+            {!localDxRunning && localDx && (
+              <>
+                <View style={styles.dxHeader}>
+                  <Text style={styles.dxHeaderLabel}>ON-DEVICE ESTIMATE</Text>
+                  <View style={[styles.dxPill, { backgroundColor: (DISEASE_COLOR[localDx.disease] ?? COLORS.primary) + '22' }]}>
+                    <Text style={[styles.dxPillText, { color: DISEASE_COLOR[localDx.disease] ?? COLORS.primary }]}>
+                      {DISEASE_LABELS[localDx.disease] ?? localDx.disease} · {(localDx.confidence * 100).toFixed(0)}%
+                    </Text>
+                  </View>
+                </View>
+                {(['HEALTHY', 'BLB', 'BLAST'] as const).map((cls) => {
+                  const p = localDx.probabilities[cls] ?? 0;
+                  return (
+                    <View key={cls} style={styles.dxBarRow}>
+                      <Text style={styles.dxBarLabel}>{DISEASE_LABELS[cls] ?? cls}</Text>
+                      <View style={styles.dxBarTrack}>
+                        <View
+                          style={[
+                            styles.dxBarFill,
+                            { width: `${Math.round(p * 100)}%`, backgroundColor: DISEASE_COLOR[cls] ?? COLORS.primary },
+                          ]}
+                        />
+                      </View>
+                      <Text style={styles.dxBarPct}>{(p * 100).toFixed(0)}%</Text>
+                    </View>
+                  );
+                })}
+                <Text style={styles.dxFootnote}>
+                  Advisory only. The server re-runs the diagnosis on upload and that result is authoritative.
+                </Text>
+              </>
+            )}
           </View>
         )}
 
@@ -266,6 +408,52 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   retakeBtnText: { fontSize: 12.5, color: COLORS.danger, fontWeight: '700' },
+  odRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 4,
+  },
+  odTitle: { fontSize: 13.5, fontWeight: '800', color: COLORS.textPrimary },
+  odSub: { fontSize: 11.5, color: COLORS.textSecondary, marginTop: 2, lineHeight: 16 },
+  dxCard: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 10,
+    gap: 8,
+  },
+  dxRunning: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  dxRunningText: { fontSize: 12.5, color: COLORS.textSecondary },
+  dxErrorText: { fontSize: 12, color: COLORS.dangerText, lineHeight: 17 },
+  dxHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  dxHeaderLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: COLORS.textMuted,
+  },
+  dxPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  dxPillText: { fontSize: 11.5, fontWeight: '800' },
+  dxBarRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  dxBarLabel: { fontSize: 11, color: COLORS.textSecondary, width: 118 },
+  dxBarTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.borderLight,
+    overflow: 'hidden',
+  },
+  dxBarFill: { height: 8, borderRadius: 4 },
+  dxBarPct: { fontSize: 11, color: COLORS.textSecondary, width: 34, textAlign: 'right' },
+  dxFootnote: { fontSize: 10.5, color: COLORS.textMuted, marginTop: 4, lineHeight: 15 },
   notesInput: {
     borderWidth: 1.2,
     borderColor: COLORS.border,
