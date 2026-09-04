@@ -1,0 +1,29 @@
+# NOTE: this repo is a monorepo and EAS archives from the git root, so the
+# authoritative filter is ../.easignore. This file only matters if oryzawatch_mobile/
+# is ever built as its own standalone repo. Keep the two in sync.
+
+# Dependencies
+node_modules/
+
+# Expo & Metro
+.expo/
+dist/
+web-build/
+.metro-health-check*
+
+# Native build folders
+/android/
+/ios/
+*.apk
+*.aab
+
+# Git & IDE
+.git/
+.idea/
+.vscode/
+.claude/
+
+# Temporary files
+*.log
+*.tmp
+*.tar.gz
