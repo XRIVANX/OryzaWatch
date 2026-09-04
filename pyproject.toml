@@ -7,4 +7,9 @@ dependencies = [
     "numpy",
     "Pillow",
     "tensorflow-cpu",
+    "torch",
+    "torchvision",
 ]
+
+# CPU-only torch/torchvision wheels come from the PyTorch index:
+#   uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu

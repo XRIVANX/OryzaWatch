@@ -184,6 +184,11 @@ AI_LABELS_PATH = config(
     'AI_LABELS_PATH',
     default=os.path.join(BASE_DIR, 'ai_models', 'rice_leaf_labels.json'),
 )
+# PyTorch is the primary inference backend; the Keras path above is the fallback.
+AI_TORCH_MODEL_PATH = config(
+    'AI_TORCH_MODEL_PATH',
+    default=os.path.join(BASE_DIR, 'ai_models', 'rice_leaf.pt'),
+)
 
 # Django REST Framework & JWT Configuration Settings
 from datetime import timedelta

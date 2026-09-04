@@ -8,4 +8,10 @@ numpy
 mysqlclient
 whitenoise
 gunicorn
+# AI leaf scanner. PyTorch is the primary inference backend; tensorflow-cpu is the
+# fallback backend and the source for the mobile TFLite export (manage.py export_tflite).
+# Install the CPU torch build from the PyTorch index, e.g.:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
 tensorflow-cpu
+torch
+torchvision

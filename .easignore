@@ -1,0 +1,65 @@
+# ── EAS Build archive filter ─────────────────────────────────────────────────
+# EAS uploads from the GIT REPO ROOT, and when this file exists it is used
+# INSTEAD OF .gitignore (not in addition to it). Only oryzawatch_mobile/ is
+# needed to build the Expo app, so everything else is excluded here.
+
+# Stray empty root lockfile (no package.json beside it) - EAS would otherwise treat
+# the repo root as the JS project and install nothing, leaving the app without
+# node_modules. The real manifest is oryzawatch_mobile/package.json.
+/package-lock.json
+
+# Sibling projects (Django backend + web frontend) - not part of the app build
+/oryzawatch_backend/
+/oryzawatch_frontend/
+
+# Python virtualenvs & caches (the repo-root .venv holds ~6 GB of CUDA PyTorch)
+/.venv/
+/env/
+**/env/
+**/.venv/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Node
+**/node_modules/
+
+# Expo / Metro / bundler output
+**/.expo/
+**/dist/
+**/web-build/
+**/.metro-health-check*
+
+# Generated native projects (EAS regenerates these from app config)
+**/android/
+**/ios/
+*.apk
+*.aab
+*.aar
+*.keystore
+*.jks
+
+# VCS / editors / tooling
+/.git/
+/.github/
+/.gitlab/
+/.idea/
+/.vscode/
+/.cursor/
+/.claude/
+
+# ML artifacts that belong to the backend, not the app
+# (the app's own model, oryzawatch_mobile/assets/model/rice_leaf.tflite, is kept)
+*.keras
+*.pt
+*.pth
+*.onnx
+
+# Misc
+*.log
+*.tmp
+*.tar.gz
+*.zip
+.DS_Store
+docker-compose.yml
