@@ -1,15 +1,24 @@
 import React from 'react';
 import { getDiseaseAdvice } from '../../utils/helpers';
 
+const CLASS_LABELS: Record<string, string> = {
+  HEALTHY: 'Healthy',
+  BLB: 'Bacterial Leaf Blight',
+  BLAST: 'Rice Blast',
+};
+const CLASS_ORDER = ['HEALTHY', 'BLB', 'BLAST'];
+
 interface ScanResultCardProps {
   disease: string;
   confidence: string | number;
+  probabilities?: Record<string, number> | null;
   onReset: () => void;
 }
 
 export const ScanResultCard: React.FC<ScanResultCardProps> = ({
   disease,
   confidence,
+  probabilities,
   onReset,
 }) => {
   const advice = getDiseaseAdvice(disease);
@@ -57,6 +66,43 @@ export const ScanResultCard: React.FC<ScanResultCardProps> = ({
           <span>🎯</span> {confidence}%
         </div>
       </div>
+
+      {/* Per-class Confidence Breakdown */}
+      {probabilities && (
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            background: '#f9fbf9',
+            padding: '14px 16px',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border-light)',
+            marginBottom: '14px',
+          }}
+        >
+          <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Confidence Breakdown
+          </div>
+          {CLASS_ORDER.filter((cls) => cls in probabilities).map((cls) => {
+            const pct = Math.round((probabilities[cls] ?? 0) * 100);
+            const barColor = getDiseaseAdvice(cls).color;
+            return (
+              <div key={cls} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '150px', fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                  {CLASS_LABELS[cls] ?? cls}
+                </div>
+                <div style={{ flex: 1, height: '8px', borderRadius: '4px', background: 'var(--border-light)', overflow: 'hidden' }}>
+                  <div style={{ width: `${pct}%`, height: '100%', borderRadius: '4px', background: barColor, transition: 'width 0.4s ease' }} />
+                </div>
+                <div style={{ width: '38px', textAlign: 'right', fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  {pct}%
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Advisory Information Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px', background: '#f9fbf9', padding: '16px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', marginBottom: '18px' }}>

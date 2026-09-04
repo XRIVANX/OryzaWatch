@@ -6,6 +6,7 @@ interface ScanResult {
   type: 'success' | 'error';
   disease?: string;
   confidence?: string;
+  probabilities?: Record<string, number> | null;
   message?: string;
 }
 
@@ -16,7 +17,11 @@ const SCAN_STAGES = [
   '✓ Diagnostic Classification & Confidence Scoring...',
 ];
 
-export const LeafScanner: React.FC = () => {
+interface LeafScannerProps {
+  onScanSuccess?: () => void;
+}
+
+export const LeafScanner: React.FC<LeafScannerProps> = ({ onScanSuccess }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview]           = useState<string | null>(null);
   const [loading, setLoading]           = useState<boolean>(false);
@@ -74,8 +79,10 @@ export const LeafScanner: React.FC = () => {
           type: 'success',
           disease: response.data.detected_disease,
           confidence: (response.data.confidence_score * 100).toFixed(1),
+          probabilities: response.data.probabilities,
         });
         setLoading(false);
+        onScanSuccess?.();
       }, 800);
     } catch (err: any) {
       setTimeout(() => {
@@ -276,6 +283,7 @@ export const LeafScanner: React.FC = () => {
         <ScanResultCard
           disease={result.disease}
           confidence={result.confidence || '90.0'}
+          probabilities={result.probabilities}
           onReset={resetAll}
         />
       )}
