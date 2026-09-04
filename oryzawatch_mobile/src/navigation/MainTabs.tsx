@@ -86,14 +86,12 @@ export default function MainTabs() {
 
       <Tab.Screen name="Map" component={MapScreen} />
 
-      {/* Kagawad / Admin "Submit Report" tab */}
-      {(role === ROLES.KAGAWAD || role === ROLES.MAO_ADMIN) && (
-        <Tab.Screen
-          name="Report"
-          component={SubmitReportScreen}
-          options={{ tabBarLabel: 'Report' }}
-        />
-      )}
+      {/* All roles can capture and submit a leaf diagnostic scan. */}
+      <Tab.Screen
+        name="Report"
+        component={SubmitReportScreen}
+        options={{ tabBarLabel: role === ROLES.FARMER ? 'Scan' : 'Report' }}
+      />
 
       <Tab.Screen name="Alerts" component={AlertsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />

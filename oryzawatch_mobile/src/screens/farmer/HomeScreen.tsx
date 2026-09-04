@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -22,7 +23,7 @@ import { analyticsApi } from '../../api/analytics';
 import { diagnosticsApi } from '../../api/diagnostics';
 import { getCurrentWeather } from '../../api/weather';
 import { useAuth } from '../../hooks/useAuth';
-import { COLORS, DISEASE_LABELS } from '../../utils/constants';
+import { COLORS, DISEASE_LABELS, API_BASE_URL } from '../../utils/constants';
 import type { Alert as OWAlert, DiseaseHotspot, LeafScan } from '../../types';
 import type { CurrentWeather } from '../../api/weather';
 import type { MainTabParamList } from '../../navigation/MainTabs';
@@ -218,14 +219,7 @@ export default function HomeScreen() {
         <TouchableOpacity
           style={styles.scanBtn}
           activeOpacity={0.88}
-          onPress={() => {
-            // Navigate to Kagawad report or Farmer Scan prompt
-            if (user?.role === 'KAGAWAD' || user?.role === 'MAO_ADMIN') {
-              navigation.navigate('Report');
-            } else {
-              navigation.navigate('Map');
-            }
-          }}
+          onPress={() => navigation.navigate('Report')}
         >
           <View style={styles.scanIconCircle}>
             <Ionicons name="camera" size={24} color={COLORS.white} />
@@ -278,12 +272,32 @@ function WeatherTile({ icon, label, value }: { icon: string; label: string; valu
 
 // ── Sub-component: RecentScanItem ──────────────────────────────────────────
 function RecentScanItem({ scan }: { scan: LeafScan }) {
-  const daysAgo = Math.floor(
-    (Date.now() - new Date(scan.created_at).getTime()) / (1000 * 60 * 60 * 24)
-  );
+  const [imgError, setImgError] = useState(false);
+  const diffMs = Date.now() - new Date(scan.created_at).getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  const timeText =
+    diffMins < 1
+      ? 'Just now'
+      : diffMins < 60
+      ? `${diffMins}m ago`
+      : diffHours < 24
+      ? `${diffHours}h ago`
+      : diffDays === 1
+      ? 'Yesterday'
+      : `${diffDays}d ago`;
+
   const diseaseLabel = DISEASE_LABELS[scan.detected_disease] || scan.detected_disease;
-  const confidencePct = Math.round(scan.confidence_score * 100);
+  const confidencePct = Math.round((scan.confidence_score || 0) * 100);
   const isHealthy = scan.detected_disease === 'HEALTHY';
+
+  // Fix image URL if relative path
+  let imageUrl = scan.image;
+  if (imageUrl && !imageUrl.startsWith('http://') && !imageUrl.startsWith('https://')) {
+    imageUrl = `${API_BASE_URL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+  }
 
   return (
     <View style={scanStyles.row}>
@@ -296,18 +310,28 @@ function RecentScanItem({ scan }: { scan: LeafScan }) {
           },
         ]}
       >
-        <Ionicons
-          name={isHealthy ? 'leaf' : 'warning'}
-          size={20}
-          color={isHealthy ? COLORS.success : COLORS.danger}
-        />
+        {imageUrl && !imgError ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={scanStyles.thumbImage}
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          <Ionicons
+            name={isHealthy ? 'leaf' : 'warning'}
+            size={20}
+            color={isHealthy ? COLORS.success : COLORS.danger}
+          />
+        )}
       </View>
       <View style={scanStyles.info}>
         <Text style={scanStyles.disease}>{diseaseLabel}</Text>
-        <Text style={scanStyles.confidence}>AI Confidence: {confidencePct}%</Text>
+        <Text style={scanStyles.confidence}>
+          AI Match: <Text style={{ fontWeight: '700', color: isHealthy ? COLORS.success : COLORS.danger }}>{confidencePct}%</Text>
+        </Text>
       </View>
       <View style={scanStyles.timeBadge}>
-        <Text style={scanStyles.time}>{daysAgo <= 0 ? 'Today' : `${daysAgo}d ago`}</Text>
+        <Text style={scanStyles.time}>{timeText}</Text>
       </View>
     </View>
   );
@@ -320,13 +344,19 @@ const scanStyles = StyleSheet.create({
     paddingVertical: 12,
   },
   iconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
     borderWidth: 1,
+    overflow: 'hidden',
+  },
+  thumbImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   info: { flex: 1 },
   disease: {
