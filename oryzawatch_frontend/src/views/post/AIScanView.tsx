@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import LeafScanner from '../../components/post/LeafScanner';
 import RecentScans from '../../components/post/RecentScans';
 
 export const AIScanView: React.FC = () => {
+  const [refreshKey, setRefreshKey] = useState<number>(0);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Top bar */}
@@ -26,8 +28,8 @@ export const AIScanView: React.FC = () => {
           gap: '32px',
         }}
       >
-        <LeafScanner />
-        <RecentScans />
+        <LeafScanner onScanSuccess={() => setRefreshKey((k) => k + 1)} />
+        <RecentScans refreshKey={refreshKey} />
       </div>
     </div>
   );

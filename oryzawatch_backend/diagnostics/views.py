@@ -10,12 +10,15 @@ class LeafScanCreateView(generics.CreateAPIView):
 
     # Override the default create method to automatically add the user
     def perform_create(self, serializer):
-        disease, confidence = predict_leaf(serializer.validated_data['image'])
-        serializer.save(
+        disease, confidence, probabilities = predict_leaf(serializer.validated_data['image'])
+        instance = serializer.save(
             reporter=self.request.user,
             detected_disease=disease,
             confidence_score=confidence,
         )
+        # Not a model field - attached only so the create response can show the
+        # full per-class breakdown. A later GET (list/history) won't have it.
+        instance.probabilities = probabilities
 
 class LeafScanListView(generics.ListAPIView):
     serializer_class = LeafScanSerializer

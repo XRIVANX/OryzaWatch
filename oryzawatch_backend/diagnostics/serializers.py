@@ -10,6 +10,13 @@ ALLOWED_IMAGE_EXTENSIONS = ('jpg', 'jpeg', 'png', 'webp')
 class LeafScanSerializer(serializers.ModelSerializer):
     # This automatically grabs the username of whoever uploaded the picture
     reporter_username = serializers.ReadOnlyField(source='reporter.username')
+    # Per-class confidence breakdown (e.g. {"HEALTHY": 0.02, "BLB": 0.91, "BLAST": 0.07}).
+    # Only present right after a scan is created - it's not a model field, so a later
+    # GET (list/history) won't have it.
+    probabilities = serializers.SerializerMethodField()
+
+    def get_probabilities(self, obj):
+        return getattr(obj, 'probabilities', None)
 
     def validate_image(self, image):
         if image.size > MAX_IMAGE_BYTES:
@@ -45,9 +52,10 @@ class LeafScanSerializer(serializers.ModelSerializer):
             'id', 
             'reporter_username', 
             'image', 
-            'detected_disease', 
-            'confidence_score', 
-            'latitude', 
+            'detected_disease',
+            'confidence_score',
+            'probabilities',
+            'latitude',
             'longitude', 
             'created_at'
         ]

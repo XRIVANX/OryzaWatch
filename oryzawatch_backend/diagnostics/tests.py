@@ -14,7 +14,10 @@ class LeafScanUploadTestCase(APITestCase):
             username='scanner-user', password='Password123!', role='FARMER'
         )
 
-    @patch('diagnostics.views.predict_leaf', return_value=('BLAST', 0.91))
+    @patch(
+        'diagnostics.views.predict_leaf',
+        return_value=('BLAST', 0.91, {'HEALTHY': 0.02, 'BLB': 0.07, 'BLAST': 0.91}),
+    )
     def test_upload_stores_ai_result(self, predict_leaf):
         self.client.force_authenticate(self.user)
         image = SimpleUploadedFile(
@@ -33,4 +36,5 @@ class LeafScanUploadTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['detected_disease'], 'BLAST')
         self.assertEqual(response.data['confidence_score'], 0.91)
+        self.assertEqual(response.data['probabilities'], {'HEALTHY': 0.02, 'BLB': 0.07, 'BLAST': 0.91})
         predict_leaf.assert_called_once()
