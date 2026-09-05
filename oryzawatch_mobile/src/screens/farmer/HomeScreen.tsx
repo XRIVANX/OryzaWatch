@@ -329,6 +329,11 @@ function RecentScanItem({ scan }: { scan: LeafScan }) {
         <Text style={scanStyles.confidence}>
           AI Match: <Text style={{ fontWeight: '700', color: isHealthy ? COLORS.success : COLORS.danger }}>{confidencePct}%</Text>
         </Text>
+        {typeof scan.affected_area_ratio === 'number' && (
+          <Text style={scanStyles.confidence}>
+            Affected area: <Text style={{ fontWeight: '700' }}>{Math.round(scan.affected_area_ratio * 100)}%</Text>
+          </Text>
+        )}
       </View>
       <View style={scanStyles.timeBadge}>
         <Text style={scanStyles.time}>{timeText}</Text>

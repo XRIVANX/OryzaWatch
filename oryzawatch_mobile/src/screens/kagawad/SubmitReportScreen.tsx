@@ -16,10 +16,11 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 
 import OryzaHeader from '../../components/common/OryzaHeader';
+import ScanningOverlay from '../../components/common/ScanningOverlay';
 import { diagnosticsApi } from '../../api/diagnostics';
 import { COLORS, DISEASE_LABELS } from '../../utils/constants';
 import {
-  classifyLeafFromBase64,
+  classifyLeafFromUri,
   isOnDeviceAvailable,
   onDeviceUnavailableReason,
   warmUpLeafModel,
@@ -35,6 +36,8 @@ const DISEASE_COLOR: Record<string, string> = {
 
 export default function SubmitReportScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
+  // Fallback only, for on-device inference on a build that hasn't been
+  // rebuilt with the native fast-resize module yet - see classifyLeafFromUri.
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imageName, setImageName] = useState('leaf.jpg');
   const [notes, setNotes] = useState('');
@@ -46,19 +49,22 @@ export default function SubmitReportScreen() {
   const [localDx, setLocalDx] = useState<LocalDiagnosis | null>(null);
   const [localDxRunning, setLocalDxRunning] = useState(false);
   const [localDxError, setLocalDxError] = useState<string | null>(null);
-  const [serverDx, setServerDx] = useState<Pick<LeafScan, 'detected_disease' | 'confidence_score'> | null>(null);
+  const [serverDx, setServerDx] = useState<Pick<
+    LeafScan,
+    'detected_disease' | 'confidence_score' | 'heatmap' | 'segmentation_mask' | 'affected_area_ratio'
+  > | null>(null);
 
   useEffect(() => {
     if (onDeviceSupported) warmUpLeafModel();
   }, [onDeviceSupported]);
 
-  const runLocalDiagnosis = async (base64: string | null) => {
-    if (!base64 || !onDeviceEnabled || !onDeviceSupported) return;
+  const runLocalDiagnosis = async (uri: string | null, base64: string | null) => {
+    if (!uri || !onDeviceEnabled || !onDeviceSupported) return;
     setLocalDxRunning(true);
     setLocalDxError(null);
     setLocalDx(null);
     try {
-      setLocalDx(await classifyLeafFromBase64(base64));
+      setLocalDx(await classifyLeafFromUri(uri, base64));
     } catch (e: any) {
       setLocalDxError(e?.message ?? 'On-device diagnosis failed.');
     } finally {
@@ -77,7 +83,7 @@ export default function SubmitReportScreen() {
     setImageName(asset.fileName ?? fallbackName);
     setSubmitted(false);
     setServerDx(null);
-    void runLocalDiagnosis(asset.base64 ?? null);
+    void runLocalDiagnosis(asset.uri, asset.base64 ?? null);
   };
 
   const pickImage = async () => {
@@ -86,10 +92,10 @@ export default function SubmitReportScreen() {
       Alert.alert('Permission Needed', 'Please grant photo library access to submit a field report.');
       return;
     }
+    // No allowsEditing/aspect - the full photo is used as-is (a forced 4:3 crop
+    // step here was cutting off part of the leaf before the user could submit).
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
       quality: 0.8,
       base64: true,
     });
@@ -103,8 +109,6 @@ export default function SubmitReportScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
       quality: 0.8,
       base64: true,
     });
@@ -121,7 +125,7 @@ export default function SubmitReportScreen() {
 
   const toggleOnDevice = (value: boolean) => {
     setOnDeviceEnabled(value);
-    if (value) void runLocalDiagnosis(imageBase64);
+    if (value) void runLocalDiagnosis(imageUri, imageBase64);
     else {
       setLocalDx(null);
       setLocalDxError(null);
@@ -139,8 +143,11 @@ export default function SubmitReportScreen() {
       let lat = 7.3047, lng = 125.6839;
       if (locPerm.status === 'granted') {
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        lat = loc.coords.latitude;
-        lng = loc.coords.longitude;
+        // The backend stores these as DecimalField(decimal_places=6) and rejects
+        // anything more precise; raw GPS readings often come back with more
+        // digits than that (float precision), so round before sending.
+        lat = Number(loc.coords.latitude.toFixed(6));
+        lng = Number(loc.coords.longitude.toFixed(6));
       }
       const scan = await diagnosticsApi.uploadScan({
         imageUri,
@@ -149,7 +156,13 @@ export default function SubmitReportScreen() {
         latitude: lat,
         longitude: lng,
       });
-      setServerDx({ detected_disease: scan.detected_disease, confidence_score: scan.confidence_score });
+      setServerDx({
+        detected_disease: scan.detected_disease,
+        confidence_score: scan.confidence_score,
+        heatmap: scan.heatmap,
+        segmentation_mask: scan.segmentation_mask,
+        affected_area_ratio: scan.affected_area_ratio,
+      });
       setSubmitted(true);
       clearImage();
       setNotes('');
@@ -178,7 +191,17 @@ export default function SubmitReportScreen() {
                 <Text style={styles.successDesc}>
                   Server diagnosis: {DISEASE_LABELS[serverDx.detected_disease] ?? serverDx.detected_disease}
                   {' '}({(serverDx.confidence_score * 100).toFixed(1)}%)
+                  {typeof serverDx.affected_area_ratio === 'number'
+                    ? ` · ${Math.round(serverDx.affected_area_ratio * 100)}% of leaf affected`
+                    : ''}
                 </Text>
+              )}
+              {serverDx?.heatmap && (
+                <Image
+                  source={{ uri: serverDx.heatmap }}
+                  style={styles.explainabilityPreview}
+                  resizeMode="cover"
+                />
               )}
             </View>
           </View>
@@ -190,8 +213,14 @@ export default function SubmitReportScreen() {
         {/* Image Preview / Picker */}
         {imageUri ? (
           <View style={styles.previewContainer}>
-            <Image source={{ uri: imageUri }} style={styles.preview} resizeMode="cover" />
-            <TouchableOpacity style={styles.retakeBtn} onPress={clearImage} activeOpacity={0.7}>
+            <View style={styles.previewImageWrap}>
+              <Image source={{ uri: imageUri }} style={styles.preview} resizeMode="cover" />
+              <ScanningOverlay
+                active={localDxRunning || submitting}
+                label={submitting ? 'Uploading & analyzing…' : 'Scanning leaf on device…'}
+              />
+            </View>
+            <TouchableOpacity style={styles.retakeBtn} onPress={clearImage} activeOpacity={0.7} disabled={submitting}>
               <Ionicons name="trash-outline" size={16} color={COLORS.danger} />
               <Text style={styles.retakeBtnText}>Remove Photo</Text>
             </TouchableOpacity>
@@ -340,6 +369,12 @@ const styles = StyleSheet.create({
   },
   successTitle: { fontSize: 13.5, color: COLORS.successText, fontWeight: '800' },
   successDesc: { fontSize: 12, color: COLORS.successText, marginTop: 2, lineHeight: 17 },
+  explainabilityPreview: {
+    width: 120,
+    height: 120,
+    borderRadius: 12,
+    marginTop: 8,
+  },
   sectionTitle: {
     fontSize: 11,
     fontWeight: '800',
@@ -390,6 +425,9 @@ const styles = StyleSheet.create({
   },
   previewContainer: {
     marginBottom: 12,
+  },
+  previewImageWrap: {
+    position: 'relative',
   },
   preview: {
     width: '100%',

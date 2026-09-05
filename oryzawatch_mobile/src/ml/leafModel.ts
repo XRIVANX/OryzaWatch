@@ -26,6 +26,32 @@ export interface LocalDiagnosis {
 
 const INPUT_SIZE = 224;
 
+// The model only knows HEALTHY/BLB/BLAST - it has no "other" class, so anything
+// (a face, a wall, a document) still gets forced into one of those three labels.
+// Mirrors diagnostics/ai.py's _looks_like_leaf (same threshold, same green-
+// dominant heuristic) so on-device and server behavior agree.
+const MIN_VEGETATION_RATIO = 0.03;
+
+export class NotALeafError extends Error {
+  constructor() {
+    super("This doesn't look like a rice leaf. Please take a clear photo of a rice leaf.");
+    this.name = 'NotALeafError';
+  }
+}
+
+/** Fraction of pixels that read as green-dominant (vegetation), 0..1. */
+function vegetationRatio(rgbPixels: Float32Array): number {
+  const pixelCount = rgbPixels.length / 3;
+  let vegetationCount = 0;
+  for (let i = 0; i < pixelCount; i++) {
+    const r = rgbPixels[i * 3];
+    const g = rgbPixels[i * 3 + 1];
+    const b = rgbPixels[i * 3 + 2];
+    if (g > r + 8 && g > b + 8) vegetationCount++;
+  }
+  return vegetationCount / pixelCount;
+}
+
 // Ordered class names, e.g. ["BLB", "HEALTHY", "BLAST"] — index must match the
 // model's output vector.
 const LABELS: LeafDisease[] = Object.keys(labelMap)
@@ -51,6 +77,39 @@ export function onDeviceUnavailableReason(): string | null {
     ? null
     : nativeLoadError ??
         'On-device diagnosis needs a development/production build (not Expo Go).';
+}
+
+// ── Fast native resize (optional) ────────────────────────────────────────────
+// expo-image-manipulator is a native module: it's only present once the dev
+// client/APK has been rebuilt to include it, same as react-native-fast-tflite
+// above. Load it the same defensive way so an older, not-yet-rebuilt install
+// keeps working (just without the speed-up) instead of crashing.
+let imageManipulator: typeof import('expo-image-manipulator') | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  imageManipulator = require('expo-image-manipulator');
+} catch {
+  imageManipulator = null;
+}
+
+/** Resize a photo URI to the model's own input size natively (fast). Returns
+ * `null` (never throws) if expo-image-manipulator isn't linked into this
+ * build yet, so callers can fall back to a slower path. */
+async function fastResizeToBase64(uri: string): Promise<string | null> {
+  if (!imageManipulator) return null;
+  try {
+    const context = imageManipulator.ImageManipulator.manipulate(uri);
+    context.resize({ width: INPUT_SIZE, height: INPUT_SIZE });
+    const rendered = await context.renderAsync();
+    const result = await rendered.saveAsync({
+      format: imageManipulator.SaveFormat.JPEG,
+      base64: true,
+      compress: 0.85,
+    });
+    return result.base64 ?? null;
+  } catch {
+    return null;
+  }
 }
 
 // react-native-fast-tflite v3: run() takes/returns ArrayBuffer[], and
@@ -117,8 +176,12 @@ function decodeAndResize(base64Jpeg: string): Float32Array {
  * Throws if on-device inference is unavailable; check isOnDeviceAvailable() first.
  */
 export async function classifyLeafFromBase64(base64Jpeg: string): Promise<LocalDiagnosis> {
-  const model = await loadLeafModel();
   const input = decodeAndResize(base64Jpeg); // Float32Array, owns its buffer (offset 0)
+  if (vegetationRatio(input) < MIN_VEGETATION_RATIO) {
+    throw new NotALeafError();
+  }
+
+  const model = await loadLeafModel();
   const outputs = await model.run([input.buffer as ArrayBuffer]);
   const probs = Array.from(new Float32Array(outputs[0]));
 
@@ -137,4 +200,23 @@ export async function classifyLeafFromBase64(base64Jpeg: string): Promise<LocalD
     probabilities,
     source: 'on-device',
   };
+}
+
+/**
+ * Classify a leaf photo by file URI. Camera/gallery photos come back at full
+ * resolution (often 3000x4000+), and decoding that in pure JS (decodeAndResize
+ * above) is slow — this resizes to the model's 224x224 input natively first
+ * when possible. Pass `fallbackBase64` (e.g. ImagePicker's own `base64: true`
+ * output) to still work on a build that hasn't been rebuilt with the native
+ * resize module yet - just without the speed-up.
+ */
+export async function classifyLeafFromUri(
+  uri: string,
+  fallbackBase64?: string | null,
+): Promise<LocalDiagnosis> {
+  const base64 = (await fastResizeToBase64(uri)) ?? fallbackBase64;
+  if (!base64) {
+    throw new Error('Could not prepare the photo for on-device analysis.');
+  }
+  return classifyLeafFromBase64(base64);
 }
