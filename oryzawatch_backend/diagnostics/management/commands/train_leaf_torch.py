@@ -98,6 +98,9 @@ class Command(BaseCommand):
             transforms.RandomVerticalFlip(),
             transforms.RandomRotation(20),
             transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.05),
+            # Field photos are often slightly out of focus or motion-blurred; train
+            # on some blurred copies so the classifier doesn't overfit to crisp shots.
+            transforms.RandomApply([transforms.GaussianBlur(kernel_size=5, sigma=(0.1, 2.0))], p=0.3),
             transforms.ToTensor(),  # -> float [0, 1], CHW
         ])
         eval_tf = transforms.Compose([

@@ -15,3 +15,9 @@ gunicorn
 tensorflow-cpu
 torch
 torchvision
+# Lesion segmentation (train_leaf_segmentation): U-Net w/ pretrained encoders.
+segmentation-models-pytorch
+# Connected-component -> bounding-box derivation for the YOLO dataset builder.
+scipy
+# Lesion detection (train_leaf_yolo / diagnostics.ai lesion boxes).
+ultralytics

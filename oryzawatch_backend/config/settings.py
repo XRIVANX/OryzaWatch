@@ -189,6 +189,17 @@ AI_TORCH_MODEL_PATH = config(
     'AI_TORCH_MODEL_PATH',
     default=os.path.join(BASE_DIR, 'ai_models', 'rice_leaf.pt'),
 )
+# Optional add-ons: lesion segmentation (severity) and lesion detection (YOLO).
+# Both are best-effort - a scan still succeeds with classification alone if
+# either of these files is missing (see diagnostics/ai.py).
+AI_SEGMENTATION_MODEL_PATH = config(
+    'AI_SEGMENTATION_MODEL_PATH',
+    default=os.path.join(BASE_DIR, 'ai_models', 'rice_leaf_segmentation.pt'),
+)
+AI_YOLO_MODEL_PATH = config(
+    'AI_YOLO_MODEL_PATH',
+    default=os.path.join(BASE_DIR, 'ai_models', 'rice_leaf_lesions.pt'),
+)
 
 # Django REST Framework & JWT Configuration Settings
 from datetime import timedelta

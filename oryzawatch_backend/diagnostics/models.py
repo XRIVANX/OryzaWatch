@@ -23,7 +23,15 @@ class LeafScan(models.Model):
     # AI Classification Results
     detected_disease = models.CharField(max_length=20, choices=DISEASE_CHOICES, default='HEALTHY')
     confidence_score = models.FloatField(default=0.0)  # e.g., 0.8567 for 85.67%
-    
+
+    # Optional AI add-ons (explainability, segmentation, detection). Each is
+    # best-effort - null until the corresponding model has been trained
+    # (see diagnostics/ai.py) - so older scans and a fresh install still work.
+    heatmap = models.ImageField(upload_to='leaf_scans/heatmaps/', null=True, blank=True)
+    segmentation_mask = models.ImageField(upload_to='leaf_scans/masks/', null=True, blank=True)
+    affected_area_ratio = models.FloatField(null=True, blank=True)
+    lesion_boxes = models.JSONField(null=True, blank=True)
+
     # Geospatial Coordinates (Vital for Leaflet.js Mapping)
     latitude = models.DecimalField(max_digits=9, decimal_places=6)
     longitude = models.DecimalField(max_digits=9, decimal_places=6)

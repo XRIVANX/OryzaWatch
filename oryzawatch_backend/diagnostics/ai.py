@@ -38,6 +38,12 @@ IMAGENET_STD = (0.229, 0.224, 0.225)
 MIN_VEGETATION_RATIO = 0.03
 
 
+class _OptionalModelMissing(Exception):
+    """Internal: a best-effort add-on model (segmentation/YOLO/Grad-CAM) isn't
+    trained yet. Never surfaced to the client - classification alone is enough
+    for a scan to succeed."""
+
+
 class AIModelUnavailable(APIException):
     status_code = 503
     default_detail = 'The rice disease AI model is not installed yet.'
@@ -188,3 +194,222 @@ def predict_leaf(image):
         raise AIModelUnavailable('AI model labels are invalid.')
     class_probabilities = {labels[str(i)]: float(probabilities[i]) for i in range(len(probabilities))}
     return disease, float(probabilities[class_index]), class_probabilities
+
+
+# --------------------------------------------------------------------------
+# Optional add-ons: explainability (Grad-CAM), lesion segmentation (severity),
+# and lesion detection (YOLO). Each is independently best-effort - a missing
+# or broken model file never fails the scan, it just leaves that field unset.
+# Train them with "manage.py train_leaf_segmentation" / "build_yolo_dataset" +
+# "train_leaf_yolo"; Grad-CAM only needs the classifier's own .state.pt.
+# --------------------------------------------------------------------------
+
+@lru_cache(maxsize=1)
+def _load_gradcam_backend():
+    state_path = Path(settings.AI_TORCH_MODEL_PATH).with_suffix('.state.pt')
+    if not state_path.is_file():
+        raise _OptionalModelMissing(f'{state_path} not found.')
+    import torch
+    from torch import nn
+    from torchvision import models
+
+    from .management.commands.train_leaf_torch import _model_classes
+
+    checkpoint = torch.load(str(state_path), map_location='cpu', weights_only=False)
+    class_names = checkpoint['classes']
+    LeafNet, _ServingWrapper = _model_classes(torch, nn, models)
+    model = LeafNet(len(class_names))
+    model.load_state_dict(checkpoint['state_dict'])
+    model.eval()
+    return model, class_names
+
+
+def _heat_colormap(intensity):
+    """Blue (cold/low) -> red (hot/high) heatmap, without a matplotlib dependency."""
+    import numpy as np
+    intensity = np.clip(intensity, 0.0, 1.0)
+    red = np.clip(1.5 - np.abs(4 * intensity - 3), 0, 1)
+    green = np.clip(1.5 - np.abs(4 * intensity - 2), 0, 1)
+    blue = np.clip(1.5 - np.abs(4 * intensity - 1), 0, 1)
+    return np.stack([red, green, blue], axis=-1) * 255.0
+
+
+def generate_gradcam(image_file, disease_label: str):
+    """Return JPEG bytes highlighting the region that drove ``disease_label``,
+    or ``None`` if the classifier's raw weights (.state.pt) aren't available."""
+    try:
+        model, class_names = _load_gradcam_backend()
+    except _OptionalModelMissing:
+        return None
+    except Exception:
+        logger.exception('Failed to load the Grad-CAM backend')
+        return None
+
+    try:
+        class_index = class_names.index(disease_label)
+    except ValueError:
+        return None
+
+    import io
+
+    import numpy as np
+    import torch
+    from PIL import Image
+
+    try:
+        image_file.seek(0)
+        with Image.open(image_file) as source:
+            original = source.convert('RGB')
+        resized = original.resize(INPUT_SIZE)
+        array = np.asarray(resized, dtype='float32') / 255.0
+        tensor = torch.from_numpy(np.ascontiguousarray(array.transpose(2, 0, 1))).unsqueeze(0)
+
+        activations = {}
+        gradients = {}
+        target_layer = model.backbone.features[-1]
+
+        def forward_hook(_module, _inputs, output):
+            activations['value'] = output
+
+        def backward_hook(_module, _grad_inputs, grad_outputs):
+            gradients['value'] = grad_outputs[0]
+
+        handle_forward = target_layer.register_forward_hook(forward_hook)
+        handle_backward = target_layer.register_full_backward_hook(backward_hook)
+        try:
+            model.zero_grad()
+            logits = model(tensor)
+            logits[0, class_index].backward()
+        finally:
+            handle_forward.remove()
+            handle_backward.remove()
+
+        weights = gradients['value'][0].mean(dim=(1, 2))
+        cam = torch.relu((weights.view(-1, 1, 1) * activations['value'][0]).sum(dim=0))
+        cam = cam / (cam.max() + 1e-8)
+        cam_array = cam.detach().numpy()
+
+        heat_image = Image.fromarray((cam_array * 255).astype('uint8')).resize(original.size, Image.BILINEAR)
+        heat_array = np.asarray(heat_image, dtype='float32') / 255.0
+        colored = _heat_colormap(heat_array)
+
+        original_array = np.asarray(original, dtype='float32')
+        alpha = 0.45
+        blended = (original_array * (1 - alpha) + colored * alpha).clip(0, 255).astype('uint8')
+        buffer = io.BytesIO()
+        Image.fromarray(blended).save(buffer, format='JPEG', quality=88)
+        return buffer.getvalue()
+    except Exception:
+        logger.exception('Grad-CAM generation failed')
+        return None
+    finally:
+        image_file.seek(0)
+
+
+@lru_cache(maxsize=1)
+def _load_segmentation_backend():
+    model_path = Path(settings.AI_SEGMENTATION_MODEL_PATH)
+    if not model_path.is_file():
+        raise _OptionalModelMissing(f'{model_path} not found.')
+    import torch
+    model = torch.jit.load(str(model_path), map_location='cpu')
+    model.eval()
+    return model
+
+
+def run_segmentation(image_file):
+    """Return ``(mask_overlay_png_bytes, affected_area_ratio)``, or ``None`` if
+    no segmentation model has been trained yet."""
+    try:
+        model = _load_segmentation_backend()
+    except _OptionalModelMissing:
+        return None
+    except Exception:
+        logger.exception('Failed to load the segmentation backend')
+        return None
+
+    import io
+
+    import numpy as np
+    import torch
+    from PIL import Image
+
+    try:
+        image_file.seek(0)
+        with Image.open(image_file) as source:
+            original = source.convert('RGB')
+        resized = original.resize(INPUT_SIZE)
+        array = np.asarray(resized, dtype='float32') / 255.0
+        tensor = torch.from_numpy(np.ascontiguousarray(array.transpose(2, 0, 1))).unsqueeze(0)
+        with torch.no_grad():
+            mask = model(tensor)[0, 0].numpy()
+        affected_ratio = float((mask > 0.5).mean())
+
+        mask_image = Image.fromarray((mask * 255).astype('uint8')).resize(original.size, Image.BILINEAR)
+        mask_array = np.asarray(mask_image, dtype='float32') / 255.0
+        alpha = (mask_array > 0.5).astype('float32') * 0.5
+
+        original_array = np.asarray(original, dtype='float32')
+        overlay_color = np.zeros_like(original_array)
+        overlay_color[..., 0] = 255.0  # red highlight over the diseased area
+        blended = original_array * (1 - alpha[..., None]) + overlay_color * alpha[..., None]
+
+        buffer = io.BytesIO()
+        Image.fromarray(blended.clip(0, 255).astype('uint8')).save(buffer, format='PNG')
+        return buffer.getvalue(), affected_ratio
+    except Exception:
+        logger.exception('Segmentation inference failed')
+        return None
+    finally:
+        image_file.seek(0)
+
+
+@lru_cache(maxsize=1)
+def _load_yolo_backend():
+    model_path = Path(settings.AI_YOLO_MODEL_PATH)
+    if not model_path.is_file():
+        raise _OptionalModelMissing(f'{model_path} not found.')
+    from ultralytics import YOLO
+    return YOLO(str(model_path))
+
+
+def run_lesion_detection(image_file):
+    """Return a list of ``{class, confidence, x, y, w, h}`` lesion boxes
+    (normalised 0-1, top-left origin), or ``[]`` if no YOLO model has been
+    trained yet."""
+    try:
+        model = _load_yolo_backend()
+    except _OptionalModelMissing:
+        return []
+    except Exception:
+        logger.exception('Failed to load the YOLO lesion-detection backend')
+        return []
+
+    from PIL import Image
+
+    try:
+        image_file.seek(0)
+        with Image.open(image_file) as source:
+            rgb = source.convert('RGB')
+        results = model.predict(rgb, imgsz=INPUT_SIZE[0], verbose=False)
+
+        boxes = []
+        for result in results:
+            names = result.names
+            height, width = result.orig_shape
+            for box in result.boxes:
+                x1, y1, x2, y2 = (float(v) for v in box.xyxy[0].tolist())
+                boxes.append({
+                    'class': names[int(box.cls[0])],
+                    'confidence': float(box.conf[0]),
+                    'x': x1 / width,
+                    'y': y1 / height,
+                    'w': (x2 - x1) / width,
+                    'h': (y2 - y1) / height,
+                })
+        return boxes
+    except Exception:
+        logger.exception('Lesion detection inference failed')
+        return []
+    finally:
+        image_file.seek(0)

@@ -7,8 +7,14 @@ oryzawatch_backend/media/
 oryzawatch_backend/ai_models/
 oryzawatch_backend/datasets/rice_leaf/train/*
 oryzawatch_backend/datasets/rice_leaf/validation/*
+oryzawatch_backend/datasets/rice_leaf/masks/*
+oryzawatch_backend/datasets/rice_leaf_yolo/
+oryzawatch_backend/runs/
+weights/
+oryzawatch_backend/yolo*.pt
 !oryzawatch_backend/datasets/rice_leaf/train/.gitkeep
 !oryzawatch_backend/datasets/rice_leaf/validation/.gitkeep
+!oryzawatch_backend/datasets/rice_leaf/masks/.gitkeep
 .vscode/
 .idea/
 

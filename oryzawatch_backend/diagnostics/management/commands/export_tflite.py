@@ -61,6 +61,12 @@ class Command(BaseCommand):
         if not labels_path.is_file():
             raise CommandError(f'Labels not found at {labels_path}.')
 
+        # The saved model's augmentation stage includes the custom RandomGaussianBlur
+        # layer from train_leaf_model. Registering it (a side effect of calling the
+        # factory) is required before load_model can deserialize it in this process.
+        from .train_leaf_model import _random_gaussian_blur_layer
+        _random_gaussian_blur_layer(tf)
+
         model = tf.keras.models.load_model(keras_model_path)
         converter = tf.lite.TFLiteConverter.from_keras_model(model)
         if options['quantize']:

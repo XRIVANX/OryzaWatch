@@ -49,16 +49,23 @@ class LeafScanSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeafScan
         fields = [
-            'id', 
-            'reporter_username', 
-            'image', 
+            'id',
+            'reporter_username',
+            'image',
             'detected_disease',
             'confidence_score',
             'probabilities',
+            'heatmap',
+            'segmentation_mask',
+            'affected_area_ratio',
+            'lesion_boxes',
             'latitude',
-            'longitude', 
+            'longitude',
             'created_at'
         ]
         # These are read-only because our backend AI will calculate them later,
         # so the React mobile/web app doesn't send them manually.
-        read_only_fields = ['detected_disease', 'confidence_score']
+        read_only_fields = [
+            'detected_disease', 'confidence_score',
+            'heatmap', 'segmentation_mask', 'affected_area_ratio', 'lesion_boxes',
+        ]

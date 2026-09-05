@@ -178,6 +178,7 @@ class Command(BaseCommand):
                 tf.keras.layers.RandomZoom(0.2),
                 tf.keras.layers.RandomContrast(0.2),
                 tf.keras.layers.RandomBrightness(0.2, value_range=(0, 255)),
+                _random_gaussian_blur_layer(tf)(rate=0.3, kernel_size=5, sigma=1.0),
             ], name='augmentation')
             x = aug(x)
         # image_dataset_from_directory yields raw 0-255 pixels and MobileNetV2 wants
@@ -225,3 +226,49 @@ class Command(BaseCommand):
         for i, name in enumerate(class_names):
             row = ' '.join(f'{int(v):>8d}' for v in confusion[i])
             self.stdout.write(f'    {name:10s} {row}')
+
+
+def _random_gaussian_blur_layer(tf):
+    """Build a RandomGaussianBlur layer class lazily so importing this command never needs tensorflow."""
+    import keras
+
+    @keras.saving.register_keras_serializable(package='diagnostics', name='RandomGaussianBlur')
+    class RandomGaussianBlur(tf.keras.layers.Layer):
+        """Blurs ~``rate`` of training batches with a small fixed Gaussian kernel.
+
+        Keras has no built-in blur augmentation layer. This cheaply mimics an
+        out-of-focus or motion-blurred field photo so the classifier doesn't
+        overfit to crisp, tripod-sharp training shots.
+        """
+
+        def __init__(self, rate=0.3, kernel_size=5, sigma=1.0, **kwargs):
+            super().__init__(**kwargs)
+            self.rate = rate
+            self.kernel_size = kernel_size
+            self.sigma = sigma
+
+        def build(self, input_shape):
+            channels = input_shape[-1]
+            half = self.kernel_size // 2
+            axis = tf.range(-half, half + 1, dtype=tf.float32)
+            kernel_1d = tf.exp(-(axis ** 2) / (2.0 * self.sigma ** 2))
+            kernel_2d = kernel_1d[:, None] * kernel_1d[None, :]
+            kernel_2d /= tf.reduce_sum(kernel_2d)
+            kernel = tf.reshape(kernel_2d, (self.kernel_size, self.kernel_size, 1, 1))
+            self.kernel = tf.tile(kernel, (1, 1, channels, 1))
+            super().build(input_shape)
+
+        def call(self, inputs, training=None):
+            if not training:
+                return inputs
+            blurred = tf.nn.depthwise_conv2d(inputs, self.kernel, strides=[1, 1, 1, 1], padding='SAME')
+            batch_size = tf.shape(inputs)[0]
+            apply_mask = tf.cast(tf.random.uniform((batch_size, 1, 1, 1)) < self.rate, inputs.dtype)
+            return apply_mask * blurred + (1.0 - apply_mask) * inputs
+
+        def get_config(self):
+            config = super().get_config()
+            config.update({'rate': self.rate, 'kernel_size': self.kernel_size, 'sigma': self.sigma})
+            return config
+
+    return RandomGaussianBlur
