@@ -20,12 +20,26 @@ export interface User {
 // From: diagnostics/models.py → LeafScan
 export type DiseaseType = 'HEALTHY' | 'BLB' | 'BLAST' | 'BROWN_SPOT';
 
+export interface LesionBox {
+  class: string;
+  confidence: number;
+  x: number;                   // normalised 0-1, top-left origin
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface LeafScan {
   id: number;
   reporter: number;            // user ID
   image: string;               // URL to uploaded image
   detected_disease: DiseaseType;
   confidence_score: number;    // 0.0 – 1.0
+  probabilities?: Record<string, number> | null;   // only present right after upload
+  heatmap?: string | null;              // Grad-CAM overlay URL, once the classifier is trained
+  segmentation_mask?: string | null;    // lesion overlay URL, once train_leaf_segmentation is trained
+  affected_area_ratio?: number | null;  // 0.0 - 1.0, once train_leaf_segmentation is trained
+  lesion_boxes?: LesionBox[] | null;    // once build_yolo_dataset + train_leaf_yolo are trained
   latitude: string;
   longitude: string;
   created_at: string;          // ISO 8601
