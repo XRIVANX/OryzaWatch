@@ -8,10 +8,23 @@ const CLASS_LABELS: Record<string, string> = {
 };
 const CLASS_ORDER = ['HEALTHY', 'BLB', 'BLAST'];
 
+interface LesionBox {
+  class: string;
+  confidence: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 interface ScanResultCardProps {
   disease: string;
   confidence: string | number;
   probabilities?: Record<string, number> | null;
+  heatmap?: string | null;
+  segmentationMask?: string | null;
+  affectedAreaRatio?: number | null;
+  lesionBoxes?: LesionBox[] | null;
   onReset: () => void;
 }
 
@@ -19,6 +32,10 @@ export const ScanResultCard: React.FC<ScanResultCardProps> = ({
   disease,
   confidence,
   probabilities,
+  heatmap,
+  segmentationMask,
+  affectedAreaRatio,
+  lesionBoxes,
   onReset,
 }) => {
   const advice = getDiseaseAdvice(disease);
@@ -101,6 +118,41 @@ export const ScanResultCard: React.FC<ScanResultCardProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Explainability + Severity (only present once those models are trained) */}
+      {(heatmap || segmentationMask) && (
+        <div
+          style={{
+            display: 'flex',
+            gap: '12px',
+            marginBottom: '14px',
+            flexWrap: 'wrap',
+          }}
+        >
+          {heatmap && (
+            <div style={{ flex: '1 1 140px' }}>
+              <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
+                Why this diagnosis (Grad-CAM)
+              </div>
+              <img src={heatmap} alt="Grad-CAM heatmap" style={{ width: '100%', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }} />
+            </div>
+          )}
+          {segmentationMask && (
+            <div style={{ flex: '1 1 140px' }}>
+              <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>
+                Affected area{typeof affectedAreaRatio === 'number' ? ` (${Math.round(affectedAreaRatio * 100)}%)` : ''}
+              </div>
+              <img src={segmentationMask} alt="Lesion segmentation mask" style={{ width: '100%', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {lesionBoxes && lesionBoxes.length > 0 && (
+        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+          🔎 {lesionBoxes.length} lesion{lesionBoxes.length === 1 ? '' : 's'} detected
         </div>
       )}
 

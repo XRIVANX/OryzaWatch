@@ -2,11 +2,24 @@ import React, { useState, useRef, useEffect } from 'react';
 import API from '../../utils/api';
 import ScanResultCard from './ScanResultCard';
 
+interface LesionBox {
+  class: string;
+  confidence: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 interface ScanResult {
   type: 'success' | 'error';
   disease?: string;
   confidence?: string;
   probabilities?: Record<string, number> | null;
+  heatmap?: string | null;
+  segmentationMask?: string | null;
+  affectedAreaRatio?: number | null;
+  lesionBoxes?: LesionBox[] | null;
   message?: string;
 }
 
@@ -80,6 +93,10 @@ export const LeafScanner: React.FC<LeafScannerProps> = ({ onScanSuccess }) => {
           disease: response.data.detected_disease,
           confidence: (response.data.confidence_score * 100).toFixed(1),
           probabilities: response.data.probabilities,
+          heatmap: response.data.heatmap,
+          segmentationMask: response.data.segmentation_mask,
+          affectedAreaRatio: response.data.affected_area_ratio,
+          lesionBoxes: response.data.lesion_boxes,
         });
         setLoading(false);
         onScanSuccess?.();
@@ -284,6 +301,10 @@ export const LeafScanner: React.FC<LeafScannerProps> = ({ onScanSuccess }) => {
           disease={result.disease}
           confidence={result.confidence || '90.0'}
           probabilities={result.probabilities}
+          heatmap={result.heatmap}
+          segmentationMask={result.segmentationMask}
+          affectedAreaRatio={result.affectedAreaRatio}
+          lesionBoxes={result.lesionBoxes}
           onReset={resetAll}
         />
       )}

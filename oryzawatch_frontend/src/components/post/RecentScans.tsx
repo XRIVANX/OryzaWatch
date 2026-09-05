@@ -7,6 +7,7 @@ interface BackendScan {
   image: string;
   detected_disease: 'HEALTHY' | 'BLB' | 'BLAST' | string;
   confidence_score: number;
+  affected_area_ratio?: number | null;
   latitude: string;
   longitude: string;
   created_at: string;
@@ -227,6 +228,11 @@ export const RecentScans: React.FC<RecentScansProps> = ({ refreshKey }) => {
                   <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600 }}>
                     AI Match
                   </div>
+                  {typeof scan.affected_area_ratio === 'number' && (
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, marginTop: '2px' }}>
+                      {Math.round(scan.affected_area_ratio * 100)}% affected
+                    </div>
+                  )}
                 </div>
               </div>
             );
