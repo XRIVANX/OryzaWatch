@@ -17,7 +17,9 @@ import * as Location from 'expo-location';
 
 import OryzaHeader from '../../components/common/OryzaHeader';
 import ScanningOverlay from '../../components/common/ScanningOverlay';
+import ThemedDialog from '../../components/common/ThemedDialog';
 import { diagnosticsApi } from '../../api/diagnostics';
+import { analyticsApi } from '../../api/analytics';
 import { COLORS, DISEASE_LABELS } from '../../utils/constants';
 import {
   classifyLeafFromUri,
@@ -34,6 +36,31 @@ const DISEASE_COLOR: Record<string, string> = {
   BLAST: COLORS.warning,
 };
 
+// Short, practical field guidance shown the moment a disease is detected -
+// what a farmer can actually do before help arrives. Not a substitute for an
+// Agri-Kagawad inspection or label-rate chemical advice.
+const TREATMENT_ADVICE: Record<string, string> = {
+  BLB:
+    'Drain the paddy and keep water levels low. Stop nitrogen top-dressing until it slows. Pull out and burn badly infected hills and bund weeds. A copper-based bactericide can slow spread but will not cure it.',
+  BLAST:
+    'Keep the field flooded — never let it dry out — and hold off on nitrogen fertiliser. Apply a recommended fungicide (e.g. tricyclazole) at first sign, repeating after 7–10 days if the weather stays wet. Clear infected stubble after harvest.',
+  BROWN_SPOT:
+    'Usually a nutrient-stress sign: correct potassium and micronutrient deficiency and improve drainage. Use a protectant fungicide (e.g. mancozeb) if lesions spread to the flag leaf, and remove infected debris.',
+};
+const DEFAULT_ADVICE =
+  'Isolate the affected area, avoid moving water, soil or tools from it to healthy plots, and inspect daily. Ask your Agri-Kagawad for a field inspection and variety-specific guidance.';
+
+const treatmentAdvice = (disease: string) => TREATMENT_ADVICE[disease] ?? DEFAULT_ADVICE;
+
+type DialogState = {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  iconColor: string;
+  title: string;
+  message: string;
+  highlight?: { label: string; text: string };
+  actions: { label: string; onPress: () => void; variant?: 'primary' | 'outline' | 'danger' }[];
+};
+
 export default function SubmitReportScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   // Fallback only, for on-device inference on a build that hasn't been
@@ -45,14 +72,19 @@ export default function SubmitReportScreen() {
   const [submitted, setSubmitted] = useState(false);
 
   const onDeviceSupported = isOnDeviceAvailable();
-  const [onDeviceEnabled, setOnDeviceEnabled] = useState(onDeviceSupported);
+  // Defaults to OFF every time the screen loads - offline inference is a
+  // convenience for no-signal fields, not the norm, so it should never be
+  // silently on without the farmer choosing it (see toggleOnDevice's warning).
+  const [onDeviceEnabled, setOnDeviceEnabled] = useState(false);
   const [localDx, setLocalDx] = useState<LocalDiagnosis | null>(null);
   const [localDxRunning, setLocalDxRunning] = useState(false);
   const [localDxError, setLocalDxError] = useState<string | null>(null);
   const [serverDx, setServerDx] = useState<Pick<
     LeafScan,
-    'detected_disease' | 'confidence_score' | 'heatmap' | 'segmentation_mask' | 'affected_area_ratio'
+    'id' | 'detected_disease' | 'confidence_score' | 'heatmap' | 'segmentation_mask' | 'affected_area_ratio'
   > | null>(null);
+  const [reportStatus, setReportStatus] = useState<'idle' | 'reporting' | 'reported' | 'declined' | 'error'>('idle');
+  const [dialog, setDialog] = useState<DialogState | null>(null);
 
   useEffect(() => {
     if (onDeviceSupported) warmUpLeafModel();
@@ -115,29 +147,83 @@ export default function SubmitReportScreen() {
     acceptPickerResult(result, `leaf_${Date.now()}.jpg`);
   };
 
-  const clearImage = () => {
+  // Resets just the picker/on-device state - used after a successful submit,
+  // where serverDx must survive so the success banner can still show it.
+  const resetPicker = () => {
     setImageUri(null);
     setImageBase64(null);
     setLocalDx(null);
     setLocalDxError(null);
+  };
+
+  // Full reset - used by "Remove Photo", where any previous result should
+  // disappear too.
+  const clearImage = () => {
+    resetPicker();
     setServerDx(null);
+    setReportStatus('idle');
   };
 
   const toggleOnDevice = (value: boolean) => {
     setOnDeviceEnabled(value);
-    if (value) void runLocalDiagnosis(imageUri, imageBase64);
-    else {
+    if (value) {
+      Alert.alert(
+        'Offline Mode',
+        "On-device diagnosis isn't as accurate as the server's full analysis. It's meant for when you have no signal — an internet connection is recommended whenever it's available.",
+        [{ text: 'Got it' }],
+      );
+      void runLocalDiagnosis(imageUri, imageBase64);
+    } else {
       setLocalDx(null);
       setLocalDxError(null);
     }
   };
 
+  const submitReport = async (scanId: number) => {
+    setReportStatus('reporting');
+    try {
+      await analyticsApi.reportScan(scanId);
+      setReportStatus('reported');
+    } catch (e: any) {
+      setReportStatus('error');
+      setDialog({
+        icon: 'cloud-offline-outline',
+        iconColor: COLORS.danger,
+        title: 'Report Failed',
+        message: e?.message ?? 'Please try again from your scan history.',
+        actions: [{ label: 'OK', variant: 'primary', onPress: () => setDialog(null) }],
+      });
+    }
+  };
+
+  const promptToReport = (scan: LeafScan) => {
+    const diseaseLabel = DISEASE_LABELS[scan.detected_disease] ?? scan.detected_disease;
+    setDialog({
+      icon: 'alert-circle',
+      iconColor: COLORS.danger,
+      title: `${diseaseLabel} Detected`,
+      message: `${diseaseLabel} was found in this sample. Report it to your Agri-Kagawad and the MAO so they can respond?`,
+      highlight: { label: 'HOW TO TREAT IT NOW', text: treatmentAdvice(scan.detected_disease) },
+      actions: [
+        { label: 'Not now', variant: 'outline', onPress: () => { setReportStatus('declined'); setDialog(null); } },
+        { label: 'Report', variant: 'primary', onPress: () => { setDialog(null); void submitReport(scan.id); } },
+      ],
+    });
+  };
+
   const handleSubmit = async () => {
     if (!imageUri) {
-      Alert.alert('Leaf Photo Required', 'Please capture or attach a photo of the affected rice leaf.');
+      setDialog({
+        icon: 'image-outline',
+        iconColor: COLORS.primary,
+        title: 'Leaf Photo Required',
+        message: 'Please capture or attach a photo of the affected rice leaf before submitting.',
+        actions: [{ label: 'OK', variant: 'primary', onPress: () => setDialog(null) }],
+      });
       return;
     }
     setSubmitting(true);
+    setReportStatus('idle');
     try {
       const locPerm = await Location.requestForegroundPermissionsAsync();
       let lat = 7.3047, lng = 125.6839;
@@ -157,6 +243,7 @@ export default function SubmitReportScreen() {
         longitude: lng,
       });
       setServerDx({
+        id: scan.id,
         detected_disease: scan.detected_disease,
         confidence_score: scan.confidence_score,
         heatmap: scan.heatmap,
@@ -164,10 +251,19 @@ export default function SubmitReportScreen() {
         affected_area_ratio: scan.affected_area_ratio,
       });
       setSubmitted(true);
-      clearImage();
+      resetPicker();
       setNotes('');
+      if (scan.detected_disease !== 'HEALTHY') {
+        promptToReport(scan);
+      }
     } catch (e: any) {
-      Alert.alert('Submission Failed', e.message || 'Please try again.');
+      setDialog({
+        icon: 'warning-outline',
+        iconColor: COLORS.danger,
+        title: 'Submission Failed',
+        message: e?.message || 'Please try again.',
+        actions: [{ label: 'OK', variant: 'primary', onPress: () => setDialog(null) }],
+      });
     } finally {
       setSubmitting(false);
     }
@@ -185,8 +281,8 @@ export default function SubmitReportScreen() {
           <View style={styles.successBanner}>
             <Ionicons name="checkmark-circle" size={22} color={COLORS.success} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.successTitle}>Report Dispatched Successfully!</Text>
-              <Text style={styles.successDesc}>The diagnostic sample has been logged and the MAO dashboard notified.</Text>
+              <Text style={styles.successTitle}>Scan Saved Successfully!</Text>
+              <Text style={styles.successDesc}>The diagnostic sample has been logged to your scan history.</Text>
               {serverDx && (
                 <Text style={styles.successDesc}>
                   Server diagnosis: {DISEASE_LABELS[serverDx.detected_disease] ?? serverDx.detected_disease}
@@ -202,6 +298,22 @@ export default function SubmitReportScreen() {
                   style={styles.explainabilityPreview}
                   resizeMode="cover"
                 />
+              )}
+              {reportStatus === 'reporting' && (
+                <Text style={styles.successDesc}>Reporting to your Agri-Kagawad…</Text>
+              )}
+              {reportStatus === 'reported' && (
+                <Text style={[styles.successDesc, { fontWeight: '800' }]}>
+                  ✓ Reported — your Agri-Kagawad and the MAO have been notified.
+                </Text>
+              )}
+              {reportStatus === 'declined' && (
+                <Text style={styles.successDesc}>Saved to your history only — not reported.</Text>
+              )}
+              {reportStatus === 'error' && (
+                <Text style={[styles.successDesc, { color: COLORS.dangerText }]}>
+                  Could not send the report. You can try again from your scan history.
+                </Text>
               )}
             </View>
           </View>
@@ -348,6 +460,17 @@ export default function SubmitReportScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      <ThemedDialog
+        visible={!!dialog}
+        title={dialog?.title ?? ''}
+        message={dialog?.message}
+        icon={dialog?.icon}
+        iconColor={dialog?.iconColor}
+        highlight={dialog?.highlight}
+        actions={dialog?.actions ?? []}
+        onRequestClose={() => setDialog(null)}
+      />
     </View>
   );
 }
