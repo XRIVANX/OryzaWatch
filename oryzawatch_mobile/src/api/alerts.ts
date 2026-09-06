@@ -8,6 +8,8 @@ export const alertsApi = {
   },
 
   async markRead(alertId: number): Promise<void> {
-    await apiClient.post(`/api/alerts/${alertId}/mark-read/`);
+    // The backend view only accepts PUT/PATCH (UpdateAPIView) - is_read is
+    // the only field the serializer allows a recipient to write.
+    await apiClient.patch(`/api/alerts/${alertId}/mark-read/`, { is_read: true });
   },
 };
