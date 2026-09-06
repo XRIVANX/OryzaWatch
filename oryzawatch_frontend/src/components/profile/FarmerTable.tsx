@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { usersApi } from '../../utils/api';
-import type { UserListItem } from '../../types';
+import { usersApi, farmApi, analyticsApi } from '../../utils/api';
+import FarmBoundaryEditor from './FarmBoundaryEditor';
+import type { UserListItem, Farm } from '../../types';
 
 const STATUS_BADGE: Record<string, string> = {
   'Critical':   'badge badge-red',
@@ -39,6 +40,37 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
   const [currentPage, setPage]     = useState<number>(1);
   const [loading, setLoading]       = useState<boolean>(true);
   const [error, setError]           = useState<string | null>(null);
+  const [farms, setFarms]           = useState<Farm[]>([]);
+  const [editingFarmer, setEditingFarmer] = useState<UserListItem | null>(null);
+  const [updatingHotspotId, setUpdatingHotspotId] = useState<number | null>(null);
+
+  const handleMarkSafe = async (farmer: UserListItem) => {
+    if (!farmer.active_hotspot_id) return;
+    setUpdatingHotspotId(farmer.active_hotspot_id);
+    try {
+      await analyticsApi.updateStatus(farmer.active_hotspot_id, 'RESOLVED');
+      setFarmers((prev) =>
+        prev.map((f) => (f.id === farmer.id ? { ...f, status: 'Safe', active_hotspot_id: null } : f))
+      );
+    } catch (err) {
+      console.error('Failed to mark farmer safe:', err);
+    } finally {
+      setUpdatingHotspotId(null);
+    }
+  };
+
+  const fetchFarms = useCallback(async () => {
+    try {
+      const res = await farmApi.list();
+      setFarms(res.data);
+    } catch (err) {
+      console.error('Failed to fetch farms:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFarms();
+  }, [fetchFarms]);
 
   const fetchFarmers = useCallback(async (searchTerm: string, page: number) => {
     setLoading(true);
@@ -197,7 +229,7 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
             <thead>
               <tr style={{ background: '#f9fbf9', borderBottom: '1px solid var(--border)' }}>
-                {['FARMER ID', 'FARMER NAME', 'BARANGAY', 'PHONE NUMBER', 'CROP STATUS', 'LATEST DIAGNOSIS', 'SCANS', 'LAST REPORT'].map((h) => (
+                {['FARMER ID', 'FARMER NAME', 'BARANGAY', 'PHONE NUMBER', 'CROP STATUS', 'LATEST DIAGNOSIS', 'SCANS', 'LAST REPORT', 'FARM'].map((h) => (
                   <th
                     key={h}
                     style={{
@@ -217,14 +249,14 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-muted)' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--text-muted)' }}>
                     <div style={{ display: 'inline-block', width: '28px', height: '28px', border: '3px solid var(--border)', borderTopColor: 'var(--leaf-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
                     <p style={{ marginTop: '12px', fontSize: '13px' }}>Loading real registered farmers…</p>
                   </td>
                 </tr>
               ) : farmers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: '56px 20px' }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: '56px 20px' }}>
                     <div style={{ fontSize: '32px', marginBottom: '8px' }}>🌾</div>
                     <h4 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
                       {search ? 'No farmers matching search' : 'No Farmers Registered Yet'}
@@ -293,7 +325,41 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
                       )}
                     </td>
                     <td style={{ padding: '14px 18px' }}>
-                      <span className={STATUS_BADGE[f.status] || 'badge'}>{f.status}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className={STATUS_BADGE[f.status] || 'badge'}>{f.status}</span>
+                        {f.active_hotspot_id != null && (
+                          <button
+                            onClick={() => handleMarkSafe(f)}
+                            disabled={updatingHotspotId === f.active_hotspot_id}
+                            title="Mark this farmer's outbreak as Safe / Resolved"
+                            style={{
+                              position: 'relative',
+                              width: '36px',
+                              height: '20px',
+                              borderRadius: '999px',
+                              border: 'none',
+                              background: '#dc2626',
+                              cursor: updatingHotspotId === f.active_hotspot_id ? 'wait' : 'pointer',
+                              padding: 0,
+                              opacity: updatingHotspotId === f.active_hotspot_id ? 0.6 : 1,
+                              flexShrink: 0,
+                            }}
+                          >
+                            <span
+                              style={{
+                                position: 'absolute',
+                                top: '2px',
+                                right: '2px',
+                                width: '16px',
+                                height: '16px',
+                                borderRadius: '50%',
+                                background: '#ffffff',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                              }}
+                            />
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '14px 18px' }}>
                       {f.disease === 'None' || !f.disease ? (
@@ -307,6 +373,15 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
                     </td>
                     <td style={{ padding: '14px 18px', color: 'var(--text-muted)', fontSize: '12px' }}>
                       {formatReportDate(f.last_report)}
+                    </td>
+                    <td style={{ padding: '14px 18px' }}>
+                      <button
+                        className="btn btn-outline"
+                        onClick={() => setEditingFarmer(f)}
+                        style={{ padding: '6px 12px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                      >
+                        {farms.some((fm) => fm.farmer === f.id) ? '🗺️ View / Edit' : '⚠️ Not Set Up'}
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -371,6 +446,21 @@ export const FarmerTable: React.FC<FarmerTableProps> = ({ onRegisterClick }) => 
           </div>
         </div>
       </div>
+
+      {editingFarmer && (
+        <FarmBoundaryEditor
+          farm={farms.find((fm) => fm.farmer === editingFarmer.id) ?? null}
+          farmerLabel={`@${editingFarmer.username}`}
+          onClose={() => setEditingFarmer(null)}
+          onSaved={(saved) => {
+            setFarms((prev) => {
+              const others = prev.filter((fm) => fm.id !== saved.id);
+              return [...others, saved];
+            });
+            setEditingFarmer(null);
+          }}
+        />
+      )}
     </div>
   );
 };
