@@ -6,7 +6,9 @@ import type {
   Alert,
   DiseaseDetection,
   Farm,
-  DashboardStats,
+  DiseaseHotspot,
+  HotspotStatus,
+  DashboardStatsSummary,
   PaginatedResponse,
 } from '../types';
 
@@ -64,11 +66,13 @@ export const authApi = {
     API.get('auth/profile/'),
 };
 
+// Backend list endpoints have no pagination configured — they return plain
+// arrays, not { count, next, previous, results }.
 export const alertsApi = {
-  list: (): Promise<AxiosResponse<PaginatedResponse<Alert>>> =>
+  list: (): Promise<AxiosResponse<Alert[]>> =>
     API.get('alerts/'),
   markRead: (id: number): Promise<AxiosResponse<Alert>> =>
-    API.patch(`alerts/${id}/`, { read: true }),
+    API.patch(`alerts/${id}/mark-read/`, { is_read: true }),
 };
 
 export const diseaseApi = {
@@ -80,10 +84,40 @@ export const diseaseApi = {
     }),
 };
 
+// Backend list endpoints have no pagination configured — they return plain
+// arrays, not { count, next, previous, results }.
 export const farmApi = {
-  list: (): Promise<AxiosResponse<PaginatedResponse<Farm>>> =>
+  list: (): Promise<AxiosResponse<Farm[]>> =>
     API.get('farms/'),
+  update: (id: number, data: Partial<Pick<Farm, 'latitude' | 'longitude' | 'boundary' | 'size_hectares'>>): Promise<AxiosResponse<Farm>> =>
+    API.patch(`farms/${id}/`, data),
 };
+
+export const analyticsApi = {
+  getHotspots: (): Promise<AxiosResponse<DiseaseHotspot[]>> =>
+    API.get('analytics/hotspots/'),
+  updateStatus: (id: number, statusValue: HotspotStatus): Promise<AxiosResponse<DiseaseHotspot>> =>
+    API.patch(`analytics/hotspots/${id}/`, { status: statusValue }),
+  broadcast: (id: number, scope: 'BARANGAY' | 'MUNICIPALITY' | 'ALL'): Promise<AxiosResponse<{ notified: number }>> =>
+    API.post(`analytics/hotspots/${id}/broadcast/`, { scope }),
+  predict: (id: number): Promise<AxiosResponse<PredictionResult>> =>
+    API.post(`analytics/hotspots/${id}/predict/`, {}),
+};
+
+export interface PredictionResult {
+  hotspot_latitude: number;
+  hotspot_longitude: number;
+  cone: [number, number][];
+  reach_km: number;
+  daily_reach_km: number[];
+  search_radius_km: number;
+  wind_direction_deg: number;
+  wind_cardinal: string;
+  wind_speed: number;
+  farms_in_cone: number;
+  farms_outside_cone: number;
+  notified: number;
+}
 
 export const usersApi = {
   list: (params?: { role?: string; search?: string; limit?: number; offset?: number }): Promise<AxiosResponse<UserListResponse>> =>
@@ -91,7 +125,7 @@ export const usersApi = {
 };
 
 export const dashboardApi = {
-  stats: (): Promise<AxiosResponse<DashboardStats>> =>
+  stats: (): Promise<AxiosResponse<DashboardStatsSummary>> =>
     API.get('dashboard/stats/'),
 };
 
