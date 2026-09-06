@@ -37,6 +37,7 @@ export interface UserListItem {
     confidence_score: number;
     created_at: string;
   } | null;
+  active_hotspot_id: number | null;
 }
 
 export interface UserListResponse {
@@ -59,23 +60,18 @@ export interface RegisterPayload {
 }
 
 // ─── Alerts ──────────────────────────────────────────────────────────────────
+// Mirrors alerts/models.py -> Alert exactly.
 
 export type AlertSeverity = 'CRITICAL' | 'WARNING' | 'INFO' | 'SUCCESS';
 
-export interface AlertAction {
-  label: string;
-  style: 'primary' | 'outline';
-}
-
 export interface Alert {
   id: number;
-  type: AlertSeverity;
-  icon: string;
+  hotspot: number | null;
   title: string;
-  time: string;
   message: string;
-  actions: AlertAction[];
-  read: boolean;
+  severity: AlertSeverity;
+  is_read: boolean;
+  created_at: string;
 }
 
 // ─── Disease / AI Scan ───────────────────────────────────────────────────────
@@ -93,15 +89,53 @@ export interface DiseaseDetection {
 }
 
 // ─── Farm / Map ──────────────────────────────────────────────────────────────
+// Mirrors farms/models.py -> Farm exactly.
 
 export interface Farm {
-  id: string;
-  name: string;
+  id: number;
+  farmer: number;
+  farmer_username: string;
   barangay: string;
-  area: number;
-  status: DiseaseStatus;
-  lat: number;
-  lng: number;
+  municipality: string;
+  latitude: string;
+  longitude: string;
+  boundary: [number, number][] | null;  // [lat, lng] points, closed ring
+  size_hectares: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// From: diagnostics/models.py -> LeafScan (subset returned nested in a hotspot)
+export interface LeafScan {
+  id: number;
+  reporter_username: string;
+  image: string;
+  detected_disease: string;
+  confidence_score: number;
+  latitude: string;
+  longitude: string;
+  created_at: string;
+}
+
+// From: analytics/models.py -> DiseaseHotspot
+export type HotspotStatus = 'CRITICAL' | 'AT_RISK' | 'MONITORING' | 'RESOLVED';
+
+export interface DiseaseHotspot {
+  id: number;
+  scan: LeafScan;
+  // The map pin - the farmer's registered farm location, not the scan's own
+  // GPS reading (which can drift from where the photo was actually taken).
+  latitude: string;
+  longitude: string;
+  status: HotspotStatus;
+  temperature: number;
+  humidity: number;
+  wind_speed: number;
+  wind_direction_deg: number;
+  wind_cardinal: string;
+  spread_velocity: number;
+  is_active: boolean;
+  updated_at: string;
 }
 
 // ─── Weather ─────────────────────────────────────────────────────────────────
