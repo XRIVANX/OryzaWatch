@@ -3,6 +3,8 @@ from django.urls import reverse
 from django.core.cache import cache
 from rest_framework import status
 from users.models import User
+from diagnostics.models import LeafScan
+from analytics.models import DiseaseHotspot
 
 
 def detail_of(resp):
@@ -97,3 +99,47 @@ class LoginLockoutTestCase(APITestCase):
         self.assertIn("Invalid username or password", detail_of(resp3))
 
 
+
+class ListUsersHotspotStatusTestCase(APITestCase):
+    """A farmer's CROP STATUS in the admin table follows their active
+    hotspot, not just their latest scan - so resolving/reopening a hotspot
+    is reflected here without a new scan."""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            username='admin1', password='Password123!', role='MAO_ADMIN')
+        self.farmer = User.objects.create_user(
+            username='farmer1', password='Password123!', role='FARMER')
+        self.scan = LeafScan.objects.create(
+            reporter=self.farmer, image='leaf_scans/x.jpg', detected_disease='BLB',
+            confidence_score=0.9, latitude='7.000000', longitude='125.000000')
+
+    def _farmer_row(self, resp):
+        return next(r for r in resp.data['results'] if r['username'] == 'farmer1')
+
+    def test_no_hotspot_yet_is_safe(self):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.get('/api/users/', {'role': 'FARMER'})
+        row = self._farmer_row(resp)
+        self.assertEqual(row['status'], 'Safe')
+        self.assertIsNone(row['active_hotspot_id'])
+
+    def test_active_hotspot_shows_critical(self):
+        hotspot = DiseaseHotspot.objects.create(
+            scan=self.scan, status='CRITICAL', temperature=30.0, humidity=80.0,
+            wind_speed=5.0, wind_direction_deg=45, wind_cardinal='NE')
+        self.client.force_authenticate(self.admin)
+        resp = self.client.get('/api/users/', {'role': 'FARMER'})
+        row = self._farmer_row(resp)
+        self.assertEqual(row['status'], 'Critical')
+        self.assertEqual(row['active_hotspot_id'], hotspot.id)
+
+    def test_resolved_hotspot_shows_safe_again(self):
+        DiseaseHotspot.objects.create(
+            scan=self.scan, status='RESOLVED', is_active=False, temperature=30.0,
+            humidity=80.0, wind_speed=5.0, wind_direction_deg=45, wind_cardinal='NE')
+        self.client.force_authenticate(self.admin)
+        resp = self.client.get('/api/users/', {'role': 'FARMER'})
+        row = self._farmer_row(resp)
+        self.assertEqual(row['status'], 'Safe')
+        self.assertIsNone(row['active_hotspot_id'])

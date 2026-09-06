@@ -264,7 +264,7 @@ def list_users(request):
     queryset = queryset.prefetch_related(
         models.Prefetch(
             'leaf_scans',
-            queryset=LeafScan.objects.order_by('-created_at'),
+            queryset=LeafScan.objects.select_related('hotspot').order_by('-created_at'),
             to_attr='ordered_scans',
         )
     ).order_by('-date_joined')
@@ -289,15 +289,24 @@ def list_users(request):
         detected_disease = 'None'
         last_report = 'No scans yet'
 
+        # The source of truth for "is this farmer currently in an outbreak"
+        # is any active DiseaseHotspot tied to one of their scans - not just
+        # what their latest scan happened to say - so this stays in sync once
+        # a Kagawad/Admin marks a hotspot Safe/Resolved (or reopens one).
+        active_hotspot = next(
+            (s.hotspot for s in ordered_scans if getattr(s, 'hotspot', None) and s.hotspot.is_active),
+            None,
+        )
+        hotspot_id = active_hotspot.id if active_hotspot else None
+        if active_hotspot:
+            disease_status = {'CRITICAL': 'Critical', 'AT_RISK': 'At Risk', 'MONITORING': 'Monitoring'}.get(
+                active_hotspot.status, 'Critical'
+            )
+        elif latest_scan and latest_scan.detected_disease == 'BROWN_SPOT':
+            disease_status = 'Monitoring'
+
         if latest_scan:
             detected_disease = latest_scan.get_detected_disease_display()
-            if latest_scan.detected_disease in ('BLB', 'BLAST'):
-                disease_status = 'Critical'
-            elif latest_scan.detected_disease == 'BROWN_SPOT':
-                disease_status = 'Monitoring'
-            else:
-                disease_status = 'Safe'
-
             last_report = latest_scan.created_at.isoformat()
             scan_info = {
                 'id': latest_scan.id,
@@ -328,6 +337,7 @@ def list_users(request):
             'disease': detected_disease,
             'last_report': last_report,
             'latest_scan': scan_info,
+            'active_hotspot_id': hotspot_id,
         })
 
     return Response({
