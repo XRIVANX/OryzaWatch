@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'diagnostics.apps.DiagnosticsConfig',
     'analytics.apps.AnalyticsConfig',
     'alerts.apps.AlertsConfig',
+    'farms.apps.FarmsConfig',
 
 ]
 
