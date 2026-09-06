@@ -8,6 +8,7 @@ interface LayoutViewProps {
   activePage: string;
   onNavigate: (page: string) => void;
   onLogOut: () => void;
+  unreadAlertsCount?: number;
 }
 
 export const LayoutView: React.FC<LayoutViewProps> = (props) => {
