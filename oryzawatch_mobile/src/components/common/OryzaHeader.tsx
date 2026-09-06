@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import OryzaLogo from './OryzaLogo';
 import { COLORS } from '../../utils/constants';
 
@@ -14,6 +15,11 @@ interface Props {
 export default function OryzaHeader({ title, unreadCount = 0, onNotificationPress }: Props) {
   const insets = useSafeAreaInsets();
   const topPadding = Math.max(insets.top + 8, 16);
+  // Every screen that renders this header lives inside the Alerts tab's own
+  // navigator, so the bell always has somewhere to go even when a screen
+  // doesn't bother wiring its own onNotificationPress.
+  const navigation = useNavigation<any>();
+  const handleBellPress = onNotificationPress ?? (() => navigation.navigate('Alerts'));
 
   return (
     <View style={[styles.header, { paddingTop: topPadding }]}>
@@ -30,7 +36,7 @@ export default function OryzaHeader({ title, unreadCount = 0, onNotificationPres
       <TouchableOpacity
         style={styles.bellButton}
         activeOpacity={0.7}
-        onPress={onNotificationPress}
+        onPress={handleBellPress}
       >
         <Ionicons name="notifications-outline" size={22} color={COLORS.textPrimary} />
         {unreadCount > 0 && (
