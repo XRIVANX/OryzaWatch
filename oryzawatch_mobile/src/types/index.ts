@@ -31,7 +31,7 @@ export interface LesionBox {
 
 export interface LeafScan {
   id: number;
-  reporter: number;            // user ID
+  reporter_username: string;
   image: string;               // URL to uploaded image
   detected_disease: DiseaseType;
   confidence_score: number;    // 0.0 – 1.0
@@ -51,6 +51,10 @@ export type HotspotStatus = 'CRITICAL' | 'AT_RISK' | 'MONITORING' | 'RESOLVED';
 export interface DiseaseHotspot {
   id: number;
   scan: LeafScan;
+  // The map pin - the farmer's registered farm location, not the scan's own
+  // GPS reading (which can drift from where the photo was actually taken).
+  latitude: string;
+  longitude: string;
   status: HotspotStatus;
   temperature: number;
   humidity: number;
@@ -62,8 +66,30 @@ export interface DiseaseHotspot {
   updated_at: string;
 }
 
+// From: farms/models.py → Farm
+export interface Farm {
+  id: number;
+  farmer: number;               // user ID
+  farmer_username: string;
+  barangay: string;
+  municipality: Municipality;
+  latitude: string;
+  longitude: string;
+  boundary: [number, number][] | null;  // [lat, lng] points, closed ring
+  size_hectares: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FarmUpsertPayload {
+  latitude: number;
+  longitude: number;
+  boundary?: [number, number][] | null;
+  size_hectares: number;
+}
+
 // From: alerts/models.py → Alert
-export type AlertSeverity = 'INFO' | 'WARNING' | 'CRITICAL';
+export type AlertSeverity = 'INFO' | 'WARNING' | 'CRITICAL' | 'SUCCESS';
 
 export interface Alert {
   id: number;
