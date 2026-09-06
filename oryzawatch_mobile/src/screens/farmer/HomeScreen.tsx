@@ -13,28 +13,33 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 
 import OryzaHeader from '../../components/common/OryzaHeader';
 import AlertBanner from '../../components/common/AlertBanner';
-import { alertsApi } from '../../api/alerts';
 import { analyticsApi } from '../../api/analytics';
 import { diagnosticsApi } from '../../api/diagnostics';
 import { getCurrentWeather } from '../../api/weather';
 import { useAuth } from '../../hooks/useAuth';
+import { useAlertsContext } from '../../context/AlertsContext';
 import { COLORS, DISEASE_LABELS, API_BASE_URL } from '../../utils/constants';
-import type { Alert as OWAlert, DiseaseHotspot, LeafScan } from '../../types';
+import type { DiseaseHotspot, LeafScan } from '../../types';
 import type { CurrentWeather } from '../../api/weather';
 import type { MainTabParamList } from '../../navigation/MainTabs';
 
 type NavProp = BottomTabNavigationProp<MainTabParamList>;
 
+// While this screen is focused, hotspots and recent scans are re-polled at
+// this interval so "Recent Field Scans" (and the biosecurity status card)
+// update on their own - alerts already refresh via AlertsContext.
+const POLL_INTERVAL_MS = 15000;
+
 export default function HomeScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<NavProp>();
+  const { alerts, unreadCount } = useAlertsContext();
 
-  const [alerts, setAlerts] = useState<OWAlert[]>([]);
   const [hotspots, setHotspots] = useState<DiseaseHotspot[]>([]);
   const [recentScans, setRecentScans] = useState<LeafScan[]>([]);
   const [weather, setWeather] = useState<CurrentWeather | null>(null);
@@ -44,18 +49,25 @@ export default function HomeScreen() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [a, h, s] = await Promise.all([
-        alertsApi.getAlerts(),
+      const [h, s] = await Promise.all([
         analyticsApi.getHotspots(),
         diagnosticsApi.getScanHistory(),
       ]);
-      setAlerts(a);
       setHotspots(h);
       setRecentScans(s.slice(0, 5));
     } catch (e) {
       console.warn('HomeScreen fetch error:', e);
     }
   }, []);
+
+  // Keep hotspots/recent scans live while this tab is the one on screen -
+  // paused automatically when the farmer switches to another tab.
+  useFocusEffect(
+    useCallback(() => {
+      const interval = setInterval(fetchData, POLL_INTERVAL_MS);
+      return () => clearInterval(interval);
+    }, [fetchData])
+  );
 
   const fetchWeatherData = useCallback(async () => {
     if (!user?.municipality) {
@@ -83,12 +95,17 @@ export default function HomeScreen() {
   }, [fetchData, fetchWeatherData]);
 
   // ── Derived data ────────────────────────────────────────────────────────────
-  const unreadCount = alerts.filter((a) => !a.is_read).length;
   const criticalAlert = alerts.find((a) => a.severity === 'CRITICAL' && !a.is_read);
   const warningAlert = alerts.find((a) => a.severity === 'WARNING' && !a.is_read);
   const bannerAlert = criticalAlert || warningAlert;
 
-  const nearestHotspot = hotspots[0] ?? null;
+  // hotspots is every ACTIVE hotspot system-wide, not just this farmer's own -
+  // hotspots[0] would show someone else's outbreak as "your" farm status.
+  // Only a hotspot tied to one of this farmer's own scans should count here:
+  // Report -> a hotspot exists for that scan -> "At Risk"; Cancel -> none was
+  // created -> stays "Safe" regardless of what's happening elsewhere.
+  const myHotspots = hotspots.filter((h) => h.scan.reporter_username === user?.username);
+  const nearestHotspot = myHotspots[0] ?? null;
   const isAtRisk = nearestHotspot?.status === 'CRITICAL';
   const farmCondition = isAtRisk ? 'At Risk' : 'Safe';
   const conditionColor = isAtRisk ? COLORS.danger : COLORS.success;
