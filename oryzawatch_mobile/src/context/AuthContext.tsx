@@ -5,6 +5,7 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import { authApi } from '../api/auth';
 import { storage } from '../utils/storage';
+import { registerSessionExpiredHandler } from '../api/client';
 import type { User } from '../types';
 
 interface AuthContextType {
@@ -36,6 +37,14 @@ export const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // If the refresh token itself has expired or been blacklisted (client.ts
+  // tried and failed to silently renew the access token), drop back to the
+  // login screen instead of leaving the app stuck on "session has expired"
+  // errors from every subsequent request.
+  useEffect(() => {
+    registerSessionExpiredHandler(() => setUser(null));
+  }, []);
 
   // On app launch: check if a valid token exists and restore session
   useEffect(() => {
