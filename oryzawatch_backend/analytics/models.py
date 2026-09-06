@@ -12,7 +12,18 @@ class DiseaseHotspot(models.Model):
     # One scan can produce exactly one hotspot tracking profile
     scan = models.OneToOneField(LeafScan, on_delete=models.CASCADE, related_name='hotspot')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='CRITICAL')
-    
+
+    # Where the outbreak is actually pinned on the map: the reporting
+    # farmer's registered Farm location (set once at creation - see
+    # analytics/views.py), not the scan's own GPS reading. A scan's GPS can
+    # drift from wherever the farmer was standing when they took the photo;
+    # the farm's own drawn pin is the reliable, farmer-confirmed location.
+    # Falls back to the scan's coordinates only if the farmer has no Farm on
+    # file yet (shouldn't normally happen - onboarding requires one).
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+
+
     # Environmental snapshots fetched via OpenWeatherMap API during prediction
     temperature = models.FloatField()
     humidity = models.FloatField()
@@ -24,6 +35,14 @@ class DiseaseHotspot(models.Model):
     spread_velocity = models.FloatField(default=0.0) # Estimated km per day expansion
     is_active = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def effective_latitude(self):
+        return self.latitude if self.latitude is not None else self.scan.latitude
+
+    @property
+    def effective_longitude(self):
+        return self.longitude if self.longitude is not None else self.scan.longitude
 
     def __str__(self):
         return f"Hotspot {self.id}: {self.scan.detected_disease} - Status: {self.status}"
