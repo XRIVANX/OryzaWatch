@@ -9,6 +9,7 @@ interface MainLayoutProps {
   activePage: string;
   onNavigate: (page: string) => void;
   onLogOut: () => void;
+  unreadAlertsCount?: number;
 }
 
 export const MainLayout: React.FC<MainLayoutProps> = ({
@@ -17,6 +18,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   activePage,
   onNavigate,
   onLogOut,
+  unreadAlertsCount = 0,
 }) => {
   return (
     <div className="layout-root leafy-bg">
@@ -26,6 +28,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         activePage={activePage}
         onNavigate={onNavigate}
         onLogOut={onLogOut}
+        unreadAlertsCount={unreadAlertsCount}
       />
       <main className="layout-main">{children}</main>
     </div>
