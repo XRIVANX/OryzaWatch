@@ -8,7 +8,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard',   label: 'Dashboard',   iconType: 'dashboard',   group: 'MAIN' },
   { id: 'disease-map', label: 'Disease Map',  iconType: 'disease-map',  group: 'MAIN' },
   { id: 'ai-scan',     label: 'AI Scan',      iconType: 'ai-scan',      group: 'MAIN' },
-  { id: 'alerts',      label: 'Alerts',       iconType: 'alerts',       group: 'MAIN', badge: 3 },
+  { id: 'alerts',      label: 'Alerts',       iconType: 'alerts',       group: 'MAIN' },
   { id: 'profile',     label: 'Profile',      iconType: 'profile',      group: 'MAIN' },
   { id: 'mao-console', label: 'MAO Console',  iconType: 'mao-console',  group: 'ADMIN' },
 ];
@@ -18,6 +18,7 @@ interface SidebarProps {
   activePage: string;
   onNavigate: (page: string) => void;
   onLogOut: () => void;
+  unreadAlertsCount?: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -25,8 +26,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activePage,
   onNavigate,
   onLogOut,
+  unreadAlertsCount = 0,
 }) => {
-  const mainItems = NAV_ITEMS.filter((i) => i.group === 'MAIN');
+  const mainItems = NAV_ITEMS.map((item) =>
+    item.id === 'alerts' && unreadAlertsCount > 0
+      ? { ...item, badge: unreadAlertsCount }
+      : item
+  ).filter((i) => i.group === 'MAIN');
   const adminItems = user.role === 'MAO_ADMIN'
     ? NAV_ITEMS.filter((i) => i.group === 'ADMIN')
     : [];
