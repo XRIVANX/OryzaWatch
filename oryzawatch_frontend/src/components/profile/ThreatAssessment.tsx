@@ -1,20 +1,42 @@
 import React from 'react';
-import { FIELD_AREAS, FieldAreaKey, LEGEND } from '../../data/diseasemap.data';
+import { LEGEND } from '../../data/diseasemap.data';
+import type { Farm, DiseaseHotspot } from '../../types';
 
 interface ThreatAssessmentProps {
-  area?: FieldAreaKey;
+  municipality: string;
+  farms: Farm[];
+  hotspots: DiseaseHotspot[];
 }
 
-export const ThreatAssessment: React.FC<ThreatAssessmentProps> = ({ area = 'carmen' }) => {
-  const overview = FIELD_AREAS[area];
+const STATUS_RANK: Record<string, number> = { CRITICAL: 3, AT_RISK: 2, MONITORING: 1, RESOLVED: 0 };
+const STATUS_LABEL: Record<string, string> = {
+  CRITICAL: 'Critical Outbreak',
+  AT_RISK: 'At Risk',
+  MONITORING: 'Monitoring',
+  RESOLVED: 'Resolved',
+};
+
+export const ThreatAssessment: React.FC<ThreatAssessmentProps> = ({ municipality, farms, hotspots }) => {
+  const active = hotspots.filter((h) => h.is_active);
+
+  const worst = active.reduce<DiseaseHotspot | null>((acc, h) => {
+    if (!acc || (STATUS_RANK[h.status] ?? 0) > (STATUS_RANK[acc.status] ?? 0)) return h;
+    return acc;
+  }, null);
+
+  const primaryThreat = worst ? worst.scan.detected_disease : 'None reported';
+  const severityLabel = worst ? STATUS_LABEL[worst.status] ?? worst.status : 'Safe';
+  const severityColor = worst ? '#dc2626' : '#16a34a';
+  const maxSpread = active.length ? Math.max(...active.map((h) => h.spread_velocity)) : 0;
+
   return (
     <div className="glass-card-interactive" style={{ padding: '24px', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div>
         <div style={{ fontSize: '17px', fontWeight: 800, color: 'var(--text-primary)', fontFamily: "'Outfit', sans-serif" }}>
-          {overview.title}
+          {municipality} Overview
         </div>
         <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-          {overview.subtitle}
+          {farms.length} registered farm{farms.length === 1 ? '' : 's'} · {active.length} active hotspot{active.length === 1 ? '' : 's'}
         </div>
       </div>
 
@@ -24,15 +46,15 @@ export const ThreatAssessment: React.FC<ThreatAssessmentProps> = ({ area = 'carm
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
           <span style={{ color: 'var(--text-secondary)' }}>Primary Threat</span>
-          <span style={{ color: '#dc2626', fontWeight: 700 }}>{overview.primaryThreat}</span>
+          <span style={{ color: worst ? '#dc2626' : 'var(--text-primary)', fontWeight: 700 }}>{primaryThreat}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '13px' }}>
           <span style={{ color: 'var(--text-secondary)' }}>Severity</span>
-          <span style={{ color: '#dc2626', fontWeight: 700 }}>{overview.severity}</span>
+          <span style={{ color: severityColor, fontWeight: 700 }}>{severityLabel}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
           <span style={{ color: 'var(--text-secondary)' }}>Spread Velocity</span>
-          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{overview.spreadVelocity}</span>
+          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{maxSpread.toFixed(1)} km / day</span>
         </div>
       </div>
 
