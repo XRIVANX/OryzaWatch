@@ -6,9 +6,12 @@ from django.views.static import serve
 from users.views import register_user, login_user, get_user_profile, admin_exists, activity_log_list, initial_setup, list_users
 from diagnostics.views import LeafScanCreateView, LeafScanListView 
 # Import your new analytics views here!
-from analytics.views import ActiveHotspotListView, HotspotDetailView, DashboardStatsView
+from analytics.views import (
+    ActiveHotspotListCreateView, HotspotDetailView, HotspotBroadcastView, HotspotPredictView, DashboardStatsView,
+)
 from rest_framework_simplejwt.views import TokenRefreshView
 from alerts.views import AlertListView, AlertMarkReadView
+from farms.views import MyFarmView, FarmListView, FarmDetailView
 
 
 urlpatterns = [
@@ -31,13 +34,20 @@ urlpatterns = [
     path('api/diagnostics/history/', LeafScanListView.as_view(), name='scan_history'),
     
     # Core Spatiotemporal Analytics Endpoints!
-    path('api/analytics/hotspots/', ActiveHotspotListView.as_view(), name='active_hotspots'),
+    path('api/analytics/hotspots/', ActiveHotspotListCreateView.as_view(), name='active_hotspots'),
     path('api/analytics/hotspots/<int:pk>/', HotspotDetailView.as_view(), name='hotspot_detail'),
+    path('api/analytics/hotspots/<int:pk>/broadcast/', HotspotBroadcastView.as_view(), name='hotspot_broadcast'),
+    path('api/analytics/hotspots/<int:pk>/predict/', HotspotPredictView.as_view(), name='hotspot_predict'),
     path('api/dashboard/stats/', DashboardStatsView.as_view(), name='dashboard_stats'),
     
     # Alert Endpoints
     path('api/alerts/', AlertListView.as_view(), name='alert_list'),
     path('api/alerts/<int:pk>/mark-read/', AlertMarkReadView.as_view(), name='alert_mark_read'),
+
+    # Farm Endpoints (pin, boundary, hectares)
+    path('api/farms/me/', MyFarmView.as_view(), name='my_farm'),
+    path('api/farms/', FarmListView.as_view(), name='farm_list'),
+    path('api/farms/<int:pk>/', FarmDetailView.as_view(), name='farm_detail'),
 ]
 
 if settings.DEBUG:
