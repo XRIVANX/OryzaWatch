@@ -16,7 +16,7 @@ import AdminDashboardScreen from '../screens/mao/AdminDashboardScreen';
 
 export type MainTabParamList = {
   Home: undefined;
-  Map: undefined;
+  Map: { focusHotspotId?: number } | undefined;
   Report: undefined;   // Kagawad / Admin only
   Alerts: undefined;
   Profile: undefined;
