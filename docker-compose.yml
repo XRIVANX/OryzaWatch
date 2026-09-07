@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   frontend:
     build: ./oryzawatch_frontend
@@ -11,6 +9,7 @@ services:
       - ./oryzawatch_frontend:/app
 
   mobile:
+    profiles: ["mobile"]
     build: ./oryzawatch_mobile
     ports:
       - "19000:19000"  # Expo app
@@ -29,10 +28,14 @@ services:
     build: ./oryzawatch_backend
     env_file:
       - ./oryzawatch_backend/.env
+    environment:
+      # Services reach each other by Compose service name, not localhost.
+      DB_HOST: db
     ports:
       - "8000:8000"   # Django app
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
     volumes:
       - ./oryzawatch_backend:/app
@@ -44,9 +47,7 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: oryzawatch_db
-      MYSQL_USER: root
-      MYSQL_PASSWORD: Rivan2004
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_ROOT_PASSWORD: Rivan2004
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
