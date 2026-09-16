@@ -201,6 +201,16 @@ AI_YOLO_MODEL_PATH = config(
     'AI_YOLO_MODEL_PATH',
     default=os.path.join(BASE_DIR, 'ai_models', 'rice_leaf_lesions.pt'),
 )
+# "Is this really a rice leaf?" check that runs before diagnosis (built by
+# manage.py build_leaf_gate). If missing, only the vegetation check applies.
+AI_LEAF_GATE_MODEL_PATH = config(
+    'AI_LEAF_GATE_MODEL_PATH',
+    default=os.path.join(BASE_DIR, 'ai_models', 'rice_leaf_gate.pt'),
+)
+AI_LEAF_GATE_REFERENCE_PATH = config(
+    'AI_LEAF_GATE_REFERENCE_PATH',
+    default=os.path.join(BASE_DIR, 'ai_models', 'rice_leaf_gate.npz'),
+)
 
 # Django REST Framework & JWT Configuration Settings
 from datetime import timedelta
@@ -220,6 +230,9 @@ REST_FRAMEWORK = {
         'user': '120/min',
         'login': '10/min',
         'register': '5/min',
+        # Disease forecast endpoints each trigger an Open-Meteo call plus model
+        # inference, so they get a tighter budget than ordinary API reads.
+        'disease_forecast': '20/min',
     },
 }
 
