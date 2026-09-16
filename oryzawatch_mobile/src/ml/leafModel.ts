@@ -34,7 +34,7 @@ const MIN_VEGETATION_RATIO = 0.03;
 
 export class NotALeafError extends Error {
   constructor() {
-    super("This doesn't look like a rice leaf. Please take a clear photo of a rice leaf.");
+    super("This doesn't look like a rice leaf. Take a close, well-lit photo of a single rice leaf so it fills most of the frame.");
     this.name = 'NotALeafError';
   }
 }
