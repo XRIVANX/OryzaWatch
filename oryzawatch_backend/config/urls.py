@@ -8,6 +8,7 @@ from diagnostics.views import LeafScanCreateView, LeafScanListView
 # Import your new analytics views here!
 from analytics.views import (
     ActiveHotspotListCreateView, HotspotDetailView, HotspotBroadcastView, HotspotPredictView, DashboardStatsView,
+    DiseaseRiskForecastView, HotspotSpreadForecastView,
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 from alerts.views import AlertListView, AlertMarkReadView
@@ -38,6 +39,8 @@ urlpatterns = [
     path('api/analytics/hotspots/<int:pk>/', HotspotDetailView.as_view(), name='hotspot_detail'),
     path('api/analytics/hotspots/<int:pk>/broadcast/', HotspotBroadcastView.as_view(), name='hotspot_broadcast'),
     path('api/analytics/hotspots/<int:pk>/predict/', HotspotPredictView.as_view(), name='hotspot_predict'),
+    path('api/analytics/hotspots/<int:pk>/spread-forecast/', HotspotSpreadForecastView.as_view(), name='hotspot_spread_forecast'),
+    path('api/analytics/disease-risk/', DiseaseRiskForecastView.as_view(), name='disease_risk_forecast'),
     path('api/dashboard/stats/', DashboardStatsView.as_view(), name='dashboard_stats'),
     
     # Alert Endpoints
