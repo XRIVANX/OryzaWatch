@@ -1,30 +1,45 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+// Private LAN IPv4 (10.x, 172.16-31.x, 192.168.x). Metro's host is only trusted
+// as the backend address when it is one of these; a tunnel domain or localhost
+// (adb reverse) says nothing about where Django is running.
+const isPrivateLanIp = (host: string): boolean =>
+  /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host) ||
+  /^192\.168\.\d{1,3}\.\d{1,3}$/.test(host) ||
+  /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/.test(host);
+
 const getBaseUrl = (): string => {
-  // 1. Explicit override — required for standalone builds (APK/IPA) where there is
-  //    no Metro bundler to auto-detect. Set in eas.json `env` or app.json `extra`.
-  //    EXPO_PUBLIC_* vars are inlined into the bundle at build time.
-  const configured =
-    process.env.EXPO_PUBLIC_API_URL ||
-    (Constants.expoConfig?.extra as { apiUrl?: string } | undefined)?.apiUrl;
+  // 1. Explicit override: EXPO_PUBLIC_API_URL from oryzawatch_mobile/.env when
+  //    developing, or from eas.json `env` for EAS builds. Inlined at bundle time.
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl) {
+    return envUrl.replace(/\/+$/, '');
+  }
+
+  // 2. Running from Metro (Expo Go / dev client): Django runs on the same PC as
+  //    Metro, so use the LAN IP the phone already reached Metro on. This follows
+  //    whichever Wi-Fi you are on, with no config edit when the PC's IP changes.
+  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).experienceUrl;
+  if (hostUri) {
+    const host = String(hostUri).replace(/^[a-z]+:\/\//i, '').split(/[:/]/)[0];
+    if (isPrivateLanIp(host)) {
+      return `http://${host}:8000`;
+    }
+  }
+
+  // 3. Standalone APK/IPA without EXPO_PUBLIC_API_URL: the fixed address in
+  //    app.json `extra.apiUrl`. Only valid on the network it was set for.
+  const configured = (Constants.expoConfig?.extra as { apiUrl?: string } | undefined)?.apiUrl;
   if (configured) {
     return configured.replace(/\/+$/, '');
   }
 
-  // 2. Auto-detect PC IP from the Metro bundler URI (Expo Go / dev client only)
-  const hostUri = Constants.expoConfig?.hostUri || (Constants as any).experienceUrl;
-  if (hostUri) {
-    const ip = hostUri.split(':')[0];
-    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
-      return `http://${ip}:8000`;
-    }
-  }
-  // 3. Android Emulator fallback
+  // 4. Android Emulator fallback
   if (Platform.OS === 'android') {
     return 'http://10.0.2.2:8000';
   }
-  // 4. iOS Simulator / Web fallback
+  // 5. iOS Simulator / Web fallback
   return 'http://127.0.0.1:8000';
 };
 
