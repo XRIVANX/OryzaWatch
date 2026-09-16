@@ -8,7 +8,8 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert as RNAlert,
+  Animated,
+  Easing,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,7 @@ import { useRoute, useNavigation, useFocusEffect, RouteProp } from '@react-navig
 import type { StackNavigationProp } from '@react-navigation/stack';
 
 import OryzaHeader from '../../components/common/OryzaHeader';
+import ThemedDialog from '../../components/common/ThemedDialog';
 import { analyticsApi } from '../../api/analytics';
 import { farmsApi } from '../../api/farms';
 import { getCurrentWeather, CurrentWeather } from '../../api/weather';
@@ -30,6 +32,13 @@ import type { RootStackParamList } from '../../navigation/AppNavigator';
 
 const DEFAULT_CENTER = { latitude: 7.3047, longitude: 125.6839 }; // Davao del Norte
 const REFERENCE_DAYS = [1, 3, 5];
+// Hotspot polling while the Map tab is on screen. Faster in Heat Map Mode so a
+// new outbreak's spread appears within seconds of being reported.
+const POLL_MS = 10000;
+const HEAT_MAP_POLL_MS = 5000;
+// A hotspot whose spread prediction failed is retried after this long, rather
+// than on every poll.
+const PREDICT_RETRY_MS = 60000;
 
 interface HeatMapCone {
   hotspotId: number;
@@ -54,6 +63,18 @@ export default function MapScreen() {
   const [cones, setCones] = useState<HeatMapCone[]>([]);
   const [predicting, setPredicting] = useState(false);
   const [heatMapWeather, setHeatMapWeather] = useState<CurrentWeather | null>(null);
+  const [notifiedCount, setNotifiedCount] = useState(0);
+  const [errorDialog, setErrorDialog] = useState<string | null>(null);
+  // Hotspots whose spread has been predicted (or is in flight) this Heat Map
+  // session, and when a failed prediction may be retried.
+  const predictedIds = useRef(new Set<number>());
+  const retryAfter = useRef(new Map<number, number>());
+  // Only the first prediction batch after the farmer switches Heat Map Mode on
+  // may show an error dialog; background retries stay silent.
+  const reportNextFailure = useRef(false);
+  // Bumped on every toggle so predictions that finish after Heat Map Mode was
+  // switched off (or restarted) are ignored instead of drawing stale cones.
+  const heatMapSession = useRef(0);
 
   const isFarmer = user?.role === ROLES.FARMER;
 
@@ -77,58 +98,89 @@ export default function MapScreen() {
     }
   }, [isFarmer]);
 
-  // Once every cone has been cleared, leave Heat Map Mode so the grayscale
-  // radar tint and legend entry go with it.
-  useEffect(() => {
-    if (heatMapMode && cones.length === 0) setHeatMapMode(false);
-  }, [heatMapMode, cones.length]);
-
   // Hotspots stay current while this tab is on screen, without a manual pull:
   // refresh immediately on focus, then keep polling. Resolved hotspots (and
   // their cones) drop off within one tick.
   useFocusEffect(
     useCallback(() => {
       fetchData();
-      const interval = setInterval(fetchData, 10000);
+      const interval = setInterval(fetchData, heatMapMode ? HEAT_MAP_POLL_MS : POLL_MS);
       return () => clearInterval(interval);
-    }, [fetchData])
+    }, [fetchData, heatMapMode])
   );
 
-  const toggleHeatMap = async () => {
+  const predictSpread = useCallback(async (targets: DiseaseHotspot[]) => {
+    const session = heatMapSession.current;
+    targets.forEach((h) => predictedIds.current.add(h.id));
+    setPredicting(true);
+    const results = await Promise.allSettled(targets.map((h) => analyticsApi.predict(h.id)));
+    setPredicting(false);
+    if (session !== heatMapSession.current) return;
+
+    const newCones: HeatMapCone[] = [];
+    let notified = 0;
+    let firstError: string | null = null;
+    results.forEach((result, i) => {
+      const hotspot = targets[i];
+      if (result.status === 'fulfilled') {
+        newCones.push({
+          hotspotId: hotspot.id,
+          lat: parseFloat(hotspot.latitude),
+          lng: parseFloat(hotspot.longitude),
+          windDeg: result.value.wind_direction_deg,
+          dailyReachKm: result.value.daily_reach_km,
+        });
+        notified += result.value.notified;
+      } else {
+        predictedIds.current.delete(hotspot.id);
+        retryAfter.current.set(hotspot.id, Date.now() + PREDICT_RETRY_MS);
+        firstError = firstError ?? (result.reason?.message || 'Please try again.');
+      }
+    });
+
+    if (newCones.length) {
+      setCones((prev) => [...prev.filter((c) => !newCones.some((n) => n.hotspotId === c.hotspotId)), ...newCones]);
+      setNotifiedCount((n) => n + notified);
+    }
+    if (firstError && reportNextFailure.current) setErrorDialog(firstError);
+    reportNextFailure.current = false;
+  }, []);
+
+  // While Heat Map Mode is on, every active hotspot gets a spread projection,
+  // including ones reported after the mode was switched on: the next poll
+  // picks them up and they are drawn straight away.
+  useEffect(() => {
+    if (!heatMapMode) return;
+    const activeIds = new Set(hotspots.map((h) => h.id));
+    predictedIds.current.forEach((id) => {
+      if (!activeIds.has(id)) predictedIds.current.delete(id);
+    });
+    const now = Date.now();
+    const pending = hotspots.filter(
+      (h) => !predictedIds.current.has(h.id) && (retryAfter.current.get(h.id) ?? 0) <= now,
+    );
+    if (pending.length) {
+      void predictSpread(pending);
+    }
+  }, [heatMapMode, hotspots, predictSpread]);
+
+  // Heat Map Mode is a view, not a one-off prediction: it turns on whether or
+  // not there are outbreaks, and stays on until switched off.
+  const toggleHeatMap = () => {
+    heatMapSession.current += 1;
     if (heatMapMode) {
       setHeatMapMode(false);
       setCones([]);
+      setNotifiedCount(0);
+      predictedIds.current.clear();
+      retryAfter.current.clear();
       return;
     }
-    if (!hotspots.length) {
-      RNAlert.alert('No Active Hotspots', 'There are no active outbreaks to predict spread for right now.');
-      return;
-    }
-    setPredicting(true);
-    try {
-      const results = await Promise.all(hotspots.map((h) => analyticsApi.predict(h.id)));
-      setCones(
-        results.map((r, i) => ({
-          hotspotId: hotspots[i].id,
-          lat: parseFloat(hotspots[i].latitude),
-          lng: parseFloat(hotspots[i].longitude),
-          windDeg: r.wind_direction_deg,
-          dailyReachKm: r.daily_reach_km,
-        }))
-      );
-      setHeatMapMode(true);
-      if (user?.municipality) {
-        getCurrentWeather(user.municipality).then(setHeatMapWeather).catch(() => undefined);
-      }
-      const totalNotified = results.reduce((sum, r) => sum + r.notified, 0);
-      RNAlert.alert(
-        'Heat Map Mode',
-        `Projected spread for ${results.length} hotspot${results.length === 1 ? '' : 's'}. ${totalNotified} farmer${totalNotified === 1 ? '' : 's'} notified.`,
-      );
-    } catch (e: any) {
-      RNAlert.alert('Prediction Failed', e?.message ?? 'Please try again.');
-    } finally {
-      setPredicting(false);
+    reportNextFailure.current = hotspots.length > 0;
+    setHeatMapMode(true);
+    fetchData();
+    if (user?.municipality) {
+      getCurrentWeather(user.municipality).then(setHeatMapWeather).catch(() => undefined);
     }
   };
 
@@ -396,6 +448,14 @@ export default function MapScreen() {
           </View>
         )}
 
+        {heatMapMode && (
+          <HeatMapStatus
+            outbreakCount={hotspots.length}
+            projecting={predicting && cones.length === 0}
+            notifiedCount={notifiedCount}
+          />
+        )}
+
         {/* Recenter Button */}
         {userLocation && (
           <TouchableOpacity style={styles.recenterBtn} onPress={handleRecenter} activeOpacity={0.85}>
@@ -414,6 +474,83 @@ export default function MapScreen() {
             <Text style={styles.editFarmBtnText}>Edit My Farm</Text>
           </TouchableOpacity>
         )}
+      </View>
+
+      <ThemedDialog
+        visible={!!errorDialog}
+        title="Prediction Failed"
+        message={`Couldn't project the spread right now. ${errorDialog ?? ''} The map will keep retrying automatically.`}
+        icon="cloud-offline-outline"
+        iconColor={COLORS.danger}
+        actions={[{ label: 'OK', variant: 'primary', onPress: () => setErrorDialog(null) }]}
+        onRequestClose={() => setErrorDialog(null)}
+      />
+    </View>
+  );
+}
+
+// Live status for Heat Map Mode: "all clear" while there are no outbreaks,
+// otherwise how many are being tracked. The pulsing dot shows the map is
+// watching live rather than showing a stale snapshot.
+function HeatMapStatus({
+  outbreakCount,
+  projecting,
+  notifiedCount,
+}: {
+  outbreakCount: number;
+  projecting: boolean;
+  notifiedCount: number;
+}) {
+  const pulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 900, easing: Easing.in(Easing.ease), useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  const clear = outbreakCount === 0;
+  const accent = clear ? COLORS.success : HOTSPOT_STATUS.CRITICAL.color;
+  const title = projecting
+    ? 'Projecting spread…'
+    : clear
+    ? 'All clear'
+    : `Tracking ${outbreakCount} outbreak${outbreakCount === 1 ? '' : 's'}`;
+  const subtitle = clear
+    ? 'No active outbreaks. Watching live, and any new outbreak appears here automatically.'
+    : `Projected 5-day spread from live wind.${notifiedCount > 0 ? ` ${notifiedCount} farmer${notifiedCount === 1 ? '' : 's'} notified.` : ''}`;
+
+  return (
+    <View style={[styles.statusCard, { borderColor: accent + '55' }]}>
+      <View style={[styles.statusIcon, { backgroundColor: accent + '1a' }]}>
+        {projecting ? (
+          <ActivityIndicator size="small" color={accent} />
+        ) : (
+          <Ionicons name={clear ? 'shield-checkmark' : 'flame'} size={20} color={accent} />
+        )}
+      </View>
+      <View style={{ flex: 1 }}>
+        <View style={styles.statusTitleRow}>
+          <Text style={styles.statusTitle}>{title}</Text>
+          <View style={styles.liveBadge}>
+            <Animated.View
+              style={[
+                styles.liveDot,
+                {
+                  backgroundColor: accent,
+                  opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }),
+                  transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.25] }) }],
+                },
+              ]}
+            />
+            <Text style={[styles.liveText, { color: accent }]}>LIVE</Text>
+          </View>
+        </View>
+        <Text style={styles.statusSubtitle}>{subtitle}</Text>
       </View>
     </View>
   );
@@ -529,6 +666,37 @@ const styles = StyleSheet.create({
   heatMapBtnTextActive: {
     color: COLORS.white,
   },
+  statusCard: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    bottom: 86,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.96)',
+    borderRadius: 16,
+    borderWidth: 1.2,
+    padding: 12,
+    shadowColor: '#12301c',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  statusIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  statusTitle: { fontSize: 14, fontWeight: '800', color: COLORS.textPrimary, flexShrink: 1 },
+  statusSubtitle: { fontSize: 11.5, color: COLORS.textSecondary, marginTop: 2, lineHeight: 16 },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  liveDot: { width: 8, height: 8, borderRadius: 4 },
+  liveText: { fontSize: 9.5, fontWeight: '800', letterSpacing: 0.8 },
   weatherCard: {
     position: 'absolute',
     top: 62,
