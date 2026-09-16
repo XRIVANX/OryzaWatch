@@ -22,3 +22,9 @@ segmentation-models-pytorch
 scipy
 # Lesion detection (train_leaf_yolo / diagnostics.ai lesion boxes).
 ultralytics
+# Airborne disease forecast (analytics/ml, train_disease_forecast): Random Forest
+# via scikit-learn, gradient boosting via XGBoost, trained on Open-Meteo history.
+scikit-learn
+xgboost
+pandas
+joblib
