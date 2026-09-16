@@ -29,8 +29,10 @@ IMAGENET_STD = (0.229, 0.224, 0.225)
 
 # The classifier only knows BLB/HEALTHY/BLAST - it has no "other" class, so an
 # unrelated photo (a face, a wall, ...) still gets forced into one of those three
-# labels. This rejects anything that doesn't plausibly look like a leaf before
-# trusting the model's answer. Calibrated against the full training + validation
+# labels. Two checks guard it. This cheap vegetation ratio runs first; the
+# rice-leaf gate in leaf_gate.py runs second, and it is the one that actually
+# stops faces, gadgets and non-rice plants, which easily pass 3% green.
+# The vegetation ratio was calibrated against the full training + validation
 # set (1996 photos, all three classes): real field photos score 0.25+, the lowest
 # score of 0.044 belongs to a synthetic (colour-jittered) augmentation, and
 # synthetic skin-tone/wall test patches score ~0.01-0.04. 0.03 sits below every
@@ -52,7 +54,10 @@ class AIModelUnavailable(APIException):
 
 class NotALeafError(APIException):
     status_code = 422
-    default_detail = "This doesn't look like a rice leaf. Please take a clear photo of a rice leaf."
+    default_detail = (
+        "This doesn't look like a rice leaf. Take a close, well-lit photo of a single "
+        "rice leaf so it fills most of the frame."
+    )
     default_code = 'not_a_leaf'
 
 
@@ -145,11 +150,13 @@ def _load_backend():
 
 
 def _looks_like_leaf(image_file) -> bool:
-    """Cheap sanity check: does the image contain enough green/vegetation pixels?
+    """Is this plausibly a rice-leaf photo? Checked before asking the classifier.
 
     The model has no "not a leaf" class, so anything (a face, a document, a wall)
-    gets forced into HEALTHY/BLB/BLAST. This rejects images that are overwhelmingly
-    not plant-colored before we bother asking the classifier.
+    gets forced into HEALTHY/BLB/BLAST. Two stages: a cheap vegetation-pixel ratio
+    rejects images that are barely plant-coloured, then the rice-leaf gate
+    (leaf_gate.py) compares the photo with the rice training photos and rejects
+    faces, objects and non-rice plants that have enough green to pass stage one.
     """
     import numpy as np
     from PIL import Image
@@ -166,7 +173,20 @@ def _looks_like_leaf(image_file) -> bool:
     # lesion land in the same R/G/B neighbourhood.)
     vegetation_mask = (green > red + 8) & (green > blue + 8)
     vegetation_ratio = float(vegetation_mask.mean())
-    return vegetation_ratio >= MIN_VEGETATION_RATIO
+    if vegetation_ratio < MIN_VEGETATION_RATIO:
+        return False
+
+    from .leaf_gate import is_rice_leaf
+
+    try:
+        accepted, similarity = is_rice_leaf(image_file)
+    except Exception:
+        # A broken gate must not block every scan; fall back to the old check.
+        logger.exception('Rice-leaf gate failed; using the vegetation check only')
+        return True
+    if not accepted:
+        logger.info('Rejected upload as not a rice leaf (similarity %.3f)', similarity)
+    return accepted
 
 
 def predict_leaf(image):
