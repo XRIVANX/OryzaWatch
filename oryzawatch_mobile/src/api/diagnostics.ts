@@ -29,6 +29,10 @@ export const diagnosticsApi = {
 
     const res = await apiClient.post<LeafScan>('/api/diagnostics/upload/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      // Upload over field mobile data plus server analysis (classifier,
+      // heatmap, lesion mask, lesion boxes) can outlast the client's default
+      // 15 s, especially on the first scan after the server starts.
+      timeout: 60000,
     });
     return res.data;
   },
