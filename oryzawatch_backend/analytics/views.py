@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from django.db.models import F
 
@@ -226,4 +227,142 @@ class DashboardStatsView(APIView):
         return Response({
             'forecast_accuracy': round(correct_count * 100 / verified_count, 1) if verified_count else None,
             'verified_forecasts': verified_count,
+        })
+
+
+# --- Airborne disease forecast (Random Forest + XGBoost) ---------------------
+# The ML stack (pandas, scikit-learn, xgboost) is imported inside the views, so
+# the rest of the API keeps working on an install without it. Results are
+# cached per ~1 km cell because the underlying forecast only updates hourly.
+
+FORECAST_CACHE_SECONDS = 30 * 60
+
+
+def _forecast_error_response(exc):
+    from analytics.ml.predict import InvalidLocation, ModelNotTrained
+    from analytics.ml.sources import WeatherFetchError
+
+    if isinstance(exc, ModelNotTrained):
+        return Response({'detail': 'Disease forecast model is not trained yet.'},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    if isinstance(exc, InvalidLocation):
+        # Only our own validation messages are echoed. Anything unexpected
+        # propagates as a plain 500 without internal detail.
+        return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    if isinstance(exc, WeatherFetchError):
+        return Response({'detail': 'Weather forecast service is unavailable. Try again shortly.'},
+                        status=status.HTTP_502_BAD_GATEWAY)
+    raise exc
+
+
+def _model_info():
+    import json
+    from analytics.ml.config import METADATA_PATH
+
+    try:
+        meta = json.loads(METADATA_PATH.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return None
+    return {
+        'trained_at': meta.get('trained_at'),
+        'algorithms': meta.get('algorithms'),
+        'training_data': meta.get('data', {}).get('source'),
+        'history': f"{meta.get('data', {}).get('start')} to {meta.get('data', {}).get('end')}",
+    }
+
+
+class DiseaseRiskForecastView(APIView):
+    """
+    GET /api/analytics/disease-risk/
+        ?lat=<float>&lng=<float>   a specific point, or
+        ?municipality=CARMEN       a monitored town centre, or
+        (nothing)                  the requesting farmer's own farm
+        &days=1..14                horizon, default 7
+
+    Day-by-day outbreak probability and risk level for BLB, Rice Blast and
+    Brown Spot, plus each disease's peak day.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'disease_forecast'
+
+    def get(self, request):
+        from django.core.cache import cache
+        from analytics.ml.config import DEFAULT_FORECAST_DAYS, MUNICIPALITY_POINTS
+        from analytics.ml.predict import clamp_days, forecast_point, validate_point
+
+        params = request.query_params
+        days = clamp_days(params.get('days', DEFAULT_FORECAST_DAYS))
+        try:
+            if params.get('lat') is not None or params.get('lng') is not None:
+                lat, lng = validate_point(params.get('lat'), params.get('lng'))
+                source = 'coordinates'
+            elif params.get('municipality'):
+                key = params['municipality'].strip().upper()
+                if key not in MUNICIPALITY_POINTS:
+                    return Response(
+                        {'detail': f"municipality must be one of {', '.join(MUNICIPALITY_POINTS)}."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                lat, lng = MUNICIPALITY_POINTS[key]
+                source = f'municipality:{key}'
+            else:
+                farm = Farm.objects.filter(farmer=request.user).first()
+                if farm is None:
+                    return Response(
+                        {'detail': 'No registered farm. Pass lat/lng or municipality.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                lat, lng = validate_point(farm.latitude, farm.longitude)
+                source = 'farm'
+
+            cache_key = f'disease-risk:{lat:.2f}:{lng:.2f}:{days}'
+            result = cache.get(cache_key)
+            if result is None:
+                result = forecast_point(lat, lng, days)
+                cache.set(cache_key, result, FORECAST_CACHE_SECONDS)
+        except Exception as exc:
+            return _forecast_error_response(exc)
+
+        return Response({'source': source, 'forecast_days': days, 'model': _model_info(), **result})
+
+
+class HotspotSpreadForecastView(APIView):
+    """
+    GET /api/analytics/hotspots/<pk>/spread-forecast/?days=1..14
+
+    Where this outbreak is likely to go. For each forecast day: the source
+    risk, each ring point's risk 10 and 20 km out, which points are
+    downwind, and the most likely direction of spread.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'disease_forecast'
+
+    def get(self, request, pk):
+        from django.core.cache import cache
+        from analytics.ml.config import DEFAULT_FORECAST_DAYS, DISEASES
+        from analytics.ml.predict import clamp_days, forecast_spread
+
+        hotspot = get_object_or_404(DiseaseHotspot.objects.select_related('scan'), pk=pk)
+        days = clamp_days(request.query_params.get('days', DEFAULT_FORECAST_DAYS))
+        detected = hotspot.scan.detected_disease
+        disease = detected if detected in DISEASES else None
+        lat, lng = float(hotspot.effective_latitude), float(hotspot.effective_longitude)
+
+        try:
+            cache_key = f'disease-spread:{lat:.2f}:{lng:.2f}:{disease}:{days}'
+            result = cache.get(cache_key)
+            if result is None:
+                result = forecast_spread(lat, lng, disease=disease, days=days)
+                cache.set(cache_key, result, FORECAST_CACHE_SECONDS)
+        except Exception as exc:
+            return _forecast_error_response(exc)
+
+        return Response({
+            'hotspot': hotspot.pk,
+            'detected_disease': detected,
+            'forecast_days': days,
+            'model': _model_info(),
+            **result,
         })
