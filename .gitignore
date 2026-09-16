@@ -9,6 +9,8 @@ oryzawatch_backend/datasets/rice_leaf/train/*
 oryzawatch_backend/datasets/rice_leaf/validation/*
 oryzawatch_backend/datasets/rice_leaf/masks/*
 oryzawatch_backend/datasets/rice_leaf_yolo/
+# Open-Meteo history cache + assembled training table (manage.py train_disease_forecast rebuilds it)
+oryzawatch_backend/datasets/weather/
 oryzawatch_backend/runs/
 weights/
 oryzawatch_backend/yolo*.pt

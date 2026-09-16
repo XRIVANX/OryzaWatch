@@ -18,6 +18,7 @@ them isn't trained yet.
 | Django backend (severity, optional) | PyTorch (U-Net) | `ai_models/rice_leaf_segmentation.pt` (TorchScript) | `train_leaf_segmentation` |
 | Django backend (lesion boxes, optional) | PyTorch (YOLO) | `ai_models/rice_leaf_lesions.pt` | `build_yolo_dataset` + `train_leaf_yolo` |
 | Django backend (explainability, optional) | PyTorch (Grad-CAM) | reuses `rice_leaf.state.pt` - no separate artifact | `train_leaf_torch` |
+| Django backend (rice-leaf check, runs first) | PyTorch (generic ImageNet MobileNetV2) | `ai_models/rice_leaf_gate.pt` + `rice_leaf_gate.npz` | `build_leaf_gate` |
 
 `diagnostics/ai.py` loads `rice_leaf.pt` when present and only falls back to
 `rice_leaf.keras` if the PyTorch model is missing or fails to load. All three
@@ -161,6 +162,45 @@ own `rice_leaf.state.pt` (step 3), hooks MobileNetV2's last conv block, and prod
 a heat-overlay JPEG highlighting the region that drove the predicted class. It's only
 available while the PyTorch classifier (not the Keras fallback) has been trained.
 
+## 6b. Rice-leaf check (build after every dataset change)
+
+```powershell
+..\.venv\Scripts\python.exe manage.py build_leaf_gate
+# optional: report false accepts on a folder of non-rice photos
+..\.venv\Scripts\python.exe manage.py build_leaf_gate --negatives D:/photos/non_rice
+```
+
+The classifier only knows three answers, so before this check existed any photo was
+forced into one of them. Real phone uploads showed a face as BLB 86%, a mousepad as
+BLAST 88% and a computer mouse as BLB 76%. The old vegetation-pixel check could not
+stop them, because 3% green pixels is easy to reach.
+
+`diagnostics/leaf_gate.py` embeds the upload with a **generic** ImageNet MobileNetV2
+and takes the mean cosine similarity to its 10 nearest training photos. Below 0.70,
+the upload is rejected with HTTP `422` and nothing is saved. The fine-tuned
+classifier's own features were tried first and could not separate faces from
+leaves, because fine-tuning to three classes collapses them.
+
+| Photos | Count | Similarity |
+|---|---|---|
+| Validation close-ups | 525 | lowest 0.733 |
+| Real phone and web rice photos | 19 | lowest 0.745 |
+| Non-rice photos used to pick the cut-off | 115 | highest 0.676 |
+| Fresh non-rice photos, held out | 80 | highest 0.671, none accepted |
+
+The command saves a TorchScript copy of the extractor, so the server never downloads
+weights, plus the training embeddings. It prints the validation rejection count and
+warns above 1%. If the files are missing, uploads fall back to the vegetation check
+alone. If the check itself errors, the scan proceeds and the error is logged.
+
+**What it does not fix.** It stops non-rice photos, not misdiagnosis of real rice
+photos. On 8 labeled phone photos of blast in `datasets/rice_leaf/_excluded/`, the
+classifier gets 1 right and calls 6 of them BLB with high confidence. It has only
+seen tight close-ups (blast mostly as small spots on green leaves), so yellowing
+field leaves with streaked lesions look like BLB to it. Resizing, centre-cropping,
+padding and multi-crop voting were all tried and none fixed it. The fix is more real,
+labeled field photos in `train/`, followed by retraining.
+
 ## 7. Export the mobile model
 
 ```powershell
@@ -187,6 +227,10 @@ result), plus four best-effort fields that populate only once their model exists
 | `segmentation_mask` | step 4's model is trained | URL to a lesion-highlight overlay PNG |
 | `affected_area_ratio` | step 4's model is trained | fraction (0-1) of the leaf's lesion area |
 | `lesion_boxes` | steps 4-5's YOLO model is trained | list of `{class, confidence, x, y, w, h}` (normalised 0-1) |
+
+Photos rejected by the rice-leaf check (step 6b) return HTTP `422` with a `detail`
+message asking for a close photo of a single leaf; the mobile app shows it as a
+"Not a Rice Leaf" dialog with a retake button.
 
 Missing add-on models never fail the upload - those fields are simply `null`
 (`diagnostics/tests.py` asserts this for a fresh install). Retraining any of them
