@@ -18,9 +18,12 @@ import * as Location from 'expo-location';
 import OryzaHeader from '../../components/common/OryzaHeader';
 import ScanningOverlay from '../../components/common/ScanningOverlay';
 import ThemedDialog from '../../components/common/ThemedDialog';
+import ScanResultCard, { LOW_CONFIDENCE } from '../../components/scan/ScanResultCard';
 import { diagnosticsApi } from '../../api/diagnostics';
 import { analyticsApi } from '../../api/analytics';
 import { COLORS, DISEASE_LABELS } from '../../utils/constants';
+import { diseaseGuidance } from '../../utils/diseaseAdvice';
+import { prepareImageForUpload } from '../../utils/uploadImage';
 import {
   classifyLeafFromUri,
   isOnDeviceAvailable,
@@ -35,22 +38,6 @@ const DISEASE_COLOR: Record<string, string> = {
   BLB: COLORS.danger,
   BLAST: COLORS.warning,
 };
-
-// Short, practical field guidance shown the moment a disease is detected -
-// what a farmer can actually do before help arrives. Not a substitute for an
-// Agri-Kagawad inspection or label-rate chemical advice.
-const TREATMENT_ADVICE: Record<string, string> = {
-  BLB:
-    'Drain the paddy and keep water levels low. Stop nitrogen top-dressing until it slows. Pull out and burn badly infected hills and bund weeds. A copper-based bactericide can slow spread but will not cure it.',
-  BLAST:
-    'Keep the field flooded — never let it dry out — and hold off on nitrogen fertiliser. Apply a recommended fungicide (e.g. tricyclazole) at first sign, repeating after 7–10 days if the weather stays wet. Clear infected stubble after harvest.',
-  BROWN_SPOT:
-    'Usually a nutrient-stress sign: correct potassium and micronutrient deficiency and improve drainage. Use a protectant fungicide (e.g. mancozeb) if lesions spread to the flag leaf, and remove infected debris.',
-};
-const DEFAULT_ADVICE =
-  'Isolate the affected area, avoid moving water, soil or tools from it to healthy plots, and inspect daily. Ask your Agri-Kagawad for a field inspection and variety-specific guidance.';
-
-const treatmentAdvice = (disease: string) => TREATMENT_ADVICE[disease] ?? DEFAULT_ADVICE;
 
 type DialogState = {
   icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -67,6 +54,7 @@ export default function SubmitReportScreen() {
   // rebuilt with the native fast-resize module yet - see classifyLeafFromUri.
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imageName, setImageName] = useState('leaf.jpg');
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -79,10 +67,9 @@ export default function SubmitReportScreen() {
   const [localDx, setLocalDx] = useState<LocalDiagnosis | null>(null);
   const [localDxRunning, setLocalDxRunning] = useState(false);
   const [localDxError, setLocalDxError] = useState<string | null>(null);
-  const [serverDx, setServerDx] = useState<Pick<
-    LeafScan,
-    'id' | 'detected_disease' | 'confidence_score' | 'heatmap' | 'segmentation_mask' | 'affected_area_ratio'
-  > | null>(null);
+  // The full upload response, so the result card can show everything the web
+  // dashboard shows (per-class breakdown, heatmap, affected area, lesions).
+  const [serverDx, setServerDx] = useState<LeafScan | null>(null);
   const [reportStatus, setReportStatus] = useState<'idle' | 'reporting' | 'reported' | 'declined' | 'error'>('idle');
   const [dialog, setDialog] = useState<DialogState | null>(null);
 
@@ -113,6 +100,7 @@ export default function SubmitReportScreen() {
     setImageUri(asset.uri);
     setImageBase64(asset.base64 ?? null);
     setImageName(asset.fileName ?? fallbackName);
+    setImageSize({ width: asset.width ?? 0, height: asset.height ?? 0 });
     setSubmitted(false);
     setServerDx(null);
     void runLocalDiagnosis(asset.uri, asset.base64 ?? null);
@@ -198,12 +186,15 @@ export default function SubmitReportScreen() {
 
   const promptToReport = (scan: LeafScan) => {
     const diseaseLabel = DISEASE_LABELS[scan.detected_disease] ?? scan.detected_disease;
+    const unsure = scan.confidence_score < LOW_CONFIDENCE
+      ? " The AI isn't sure about this photo, so consider retaking a closer one first."
+      : '';
     setDialog({
       icon: 'alert-circle',
       iconColor: COLORS.danger,
       title: `${diseaseLabel} Detected`,
-      message: `${diseaseLabel} was found in this sample. Report it to your Agri-Kagawad and the MAO so they can respond?`,
-      highlight: { label: 'HOW TO TREAT IT NOW', text: treatmentAdvice(scan.detected_disease) },
+      message: `${diseaseLabel} was found in this sample.${unsure} Report it to your Agri-Kagawad and the MAO so they can respond?`,
+      highlight: { label: 'HOW TO TREAT IT NOW', text: diseaseGuidance(scan.detected_disease).treatment },
       actions: [
         { label: 'Not now', variant: 'outline', onPress: () => { setReportStatus('declined'); setDialog(null); } },
         { label: 'Report', variant: 'primary', onPress: () => { setDialog(null); void submitReport(scan.id); } },
@@ -235,21 +226,15 @@ export default function SubmitReportScreen() {
         lat = Number(loc.coords.latitude.toFixed(6));
         lng = Number(loc.coords.longitude.toFixed(6));
       }
+      const upload = await prepareImageForUpload(imageUri, imageName, imageSize.width, imageSize.height);
       const scan = await diagnosticsApi.uploadScan({
-        imageUri,
-        imageName,
-        imageType: 'image/jpeg',
+        imageUri: upload.uri,
+        imageName: upload.name,
+        imageType: upload.type,
         latitude: lat,
         longitude: lng,
       });
-      setServerDx({
-        id: scan.id,
-        detected_disease: scan.detected_disease,
-        confidence_score: scan.confidence_score,
-        heatmap: scan.heatmap,
-        segmentation_mask: scan.segmentation_mask,
-        affected_area_ratio: scan.affected_area_ratio,
-      });
+      setServerDx(scan);
       setSubmitted(true);
       resetPicker();
       setNotes('');
@@ -257,6 +242,23 @@ export default function SubmitReportScreen() {
         promptToReport(scan);
       }
     } catch (e: any) {
+      if (e?.status === 422) {
+        // The server's rice-leaf check rejected the photo (a face, an object,
+        // or a non-rice plant). Nothing was saved.
+        setDialog({
+          icon: 'leaf-outline',
+          iconColor: COLORS.warning,
+          title: 'Not a Rice Leaf',
+          message:
+            e.message ||
+            "This doesn't look like a rice leaf. Take a close, well-lit photo of a single rice leaf so it fills most of the frame.",
+          actions: [
+            { label: 'Cancel', variant: 'outline', onPress: () => setDialog(null) },
+            { label: 'Retake Photo', variant: 'primary', onPress: () => { setDialog(null); clearImage(); void takePhoto(); } },
+          ],
+        });
+        return;
+      }
       setDialog({
         icon: 'warning-outline',
         iconColor: COLORS.danger,
@@ -283,22 +285,6 @@ export default function SubmitReportScreen() {
             <View style={{ flex: 1 }}>
               <Text style={styles.successTitle}>Scan Saved Successfully!</Text>
               <Text style={styles.successDesc}>The diagnostic sample has been logged to your scan history.</Text>
-              {serverDx && (
-                <Text style={styles.successDesc}>
-                  Server diagnosis: {DISEASE_LABELS[serverDx.detected_disease] ?? serverDx.detected_disease}
-                  {' '}({(serverDx.confidence_score * 100).toFixed(1)}%)
-                  {typeof serverDx.affected_area_ratio === 'number'
-                    ? ` · ${Math.round(serverDx.affected_area_ratio * 100)}% of leaf affected`
-                    : ''}
-                </Text>
-              )}
-              {serverDx?.heatmap && (
-                <Image
-                  source={{ uri: serverDx.heatmap }}
-                  style={styles.explainabilityPreview}
-                  resizeMode="cover"
-                />
-              )}
               {reportStatus === 'reporting' && (
                 <Text style={styles.successDesc}>Reporting to your Agri-Kagawad…</Text>
               )}
@@ -319,7 +305,9 @@ export default function SubmitReportScreen() {
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>LEAF SAMPLE PHOTO *</Text>
+        {submitted && serverDx && <ScanResultCard scan={serverDx} />}
+
+        <Text style={[styles.sectionTitle, submitted && serverDx ? { marginTop: 20 } : null]}>LEAF SAMPLE PHOTO *</Text>
         <Text style={styles.sectionDesc}>Capture or select a high-resolution close-up of the infected leaf area.</Text>
 
         {/* Image Preview / Picker */}
@@ -492,12 +480,6 @@ const styles = StyleSheet.create({
   },
   successTitle: { fontSize: 13.5, color: COLORS.successText, fontWeight: '800' },
   successDesc: { fontSize: 12, color: COLORS.successText, marginTop: 2, lineHeight: 17 },
-  explainabilityPreview: {
-    width: 120,
-    height: 120,
-    borderRadius: 12,
-    marginTop: 8,
-  },
   sectionTitle: {
     fontSize: 11,
     fontWeight: '800',
