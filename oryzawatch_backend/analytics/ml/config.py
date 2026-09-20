@@ -80,14 +80,13 @@ MUNICIPALITY_POINTS = {
 SERVICE_AREA = {'lat_min': 5.0, 'lat_max': 10.5, 'lng_min': 121.5, 'lng_max': 127.0}
 
 # --- Diseases ---------------------------------------------------------------
-# Matches diagnostics.models.LeafScan.DISEASE_CHOICES minus HEALTHY: the three
+# Matches diagnostics.models.LeafScan.DISEASE_CHOICES minus HEALTHY: the two
 # airborne/splash-dispersed diseases the scanner classifies.
-DISEASES = ('BLB', 'BLAST', 'BROWN_SPOT')
+DISEASES = ('BLB', 'BLAST')
 
 DISEASE_LABELS = {
     'BLB': 'Bacterial Leaf Blight',
     'BLAST': 'Rice Blast',
-    'BROWN_SPOT': 'Brown Spot',
 }
 
 # --- Forecast horizon -------------------------------------------------------

@@ -59,6 +59,14 @@ class FeatureTests(SimpleTestCase):
         self.assertFalse(inputs & set(ep.label_columns()))
         self.assertFalse(inputs & set(labels.columns) - {'date'})
 
+    def test_retired_disease_labels_are_still_recognised_as_labels(self):
+        # A training table cached while BROWN_SPOT was modelled keeps its
+        # label columns. They must never be read as ordinary features.
+        for column in ('BROWN_SPOT_outbreak', 'BROWN_SPOT_severity', 'BROWN_SPOT_infection'):
+            self.assertTrue(ep.is_label_column(column), column)
+        for column in ('blast_day_sum_3d', 'rh_mean', 'wind_from_deg'):
+            self.assertFalse(ep.is_label_column(column), column)
+
     def test_wind_direction_is_vector_averaged(self):
         hourly = synthetic_hourly(days=2)
         hourly['wind_direction_10m'] = np.where(np.arange(len(hourly)) % 2, 350.0, 10.0)
@@ -91,8 +99,8 @@ class EpidemiologyTests(SimpleTestCase):
     def test_wet_weather_drives_more_blast_infection_than_dry(self):
         profile = ep.PROFILES['BLAST']
         wet, dry = synthetic_hourly(wet=True), synthetic_hourly(wet=False)
-        wet_eff = ep.infection_efficiency(ep.hourly_drivers(wet, profile), to_daily(wet), profile)
-        dry_eff = ep.infection_efficiency(ep.hourly_drivers(dry, profile), to_daily(dry), profile)
+        wet_eff = ep.infection_efficiency(ep.hourly_drivers(wet, profile), profile)
+        dry_eff = ep.infection_efficiency(ep.hourly_drivers(dry, profile), profile)
         self.assertGreater(wet_eff.mean(), dry_eff.mean() * 3)
 
 

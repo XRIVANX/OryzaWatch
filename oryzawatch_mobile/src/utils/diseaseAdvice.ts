@@ -29,13 +29,6 @@ const GUIDANCE: Record<string, DiseaseGuidance> = {
       'Keep the field flooded — never let it dry out — and hold off on nitrogen fertiliser. Apply a recommended fungicide (e.g. tricyclazole) at first sign, repeating after 7–10 days if the weather stays wet. Clear infected stubble after harvest.',
     spread: 'Airborne fungal spores, most active in humid weather.',
   },
-  BROWN_SPOT: {
-    color: COLORS.goldLight,
-    severity: 'Moderate (Level 2)',
-    treatment:
-      'Usually a nutrient-stress sign: correct potassium and micronutrient deficiency and improve drainage. Use a protectant fungicide (e.g. mancozeb) if lesions spread to the flag leaf, and remove infected debris.',
-    spread: 'Nutrient-deficient paddy patches are most at risk.',
-  },
   HEALTHY: {
     color: COLORS.success,
     severity: 'Monitoring (Level 1)',

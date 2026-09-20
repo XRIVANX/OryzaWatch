@@ -1,5 +1,5 @@
 """
-Airborne rice disease forecast model (BLB, Rice Blast, Brown Spot).
+Airborne rice disease forecast model (BLB, Rice Blast).
 
 Random Forest + XGBoost ensembles trained with scikit-learn on five years of
 Open-Meteo hourly weather. See DISEASE_FORECAST.md in the backend root for

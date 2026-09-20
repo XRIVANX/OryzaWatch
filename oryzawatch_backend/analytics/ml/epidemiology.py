@@ -22,8 +22,8 @@ What makes this a real learning problem rather than a lookup:
     imperfect scouting (label noise). Perfect accuracy is not possible.
 
 The cardinal temperatures and wetness needs below come from the rice-pathology
-literature (Pyricularia oryzae, Xanthomonas oryzae pv. oryzae, Bipolaris
-oryzae). The rate constants are calibrated so outbreak frequency is plausible
+literature (Pyricularia oryzae, Xanthomonas oryzae pv. oryzae). The rate
+constants are calibrated so outbreak frequency is plausible
 for lowland Mindanao. Once real confirmed scans accumulate, they should
 replace or re-weight these labels (see DISEASE_FORECAST.md).
 """
@@ -70,8 +70,6 @@ class DiseaseProfile:
     splash_weight: float
     splash_mid: float
     splash_slope: float
-    # Weight of antecedent drought stress on the crop. 0 disables it.
-    stress_weight: float
     # Days from infection to visible lesions.
     latency_mean: float
     latency_sd: float
@@ -95,7 +93,7 @@ PROFILES = {
         code='BLAST', t_min=16.0, t_opt=24.0, t_max=30.0,
         wet_rh=90.0, min_wet_run=9, wet_mid=20.5, wet_slope=1.8,
         moisture_weight=1.0, night_bonus=0.35, rain_wash_mm=12.0,
-        splash_weight=0.0, splash_mid=0.0, splash_slope=1.0, stress_weight=0.0,
+        splash_weight=0.0, splash_mid=0.0, splash_slope=1.0,
         latency_mean=6.0, latency_sd=1.5,
         secondary_rate=0.45, background=0.020, decay=0.080,
         stage_peaks=((35, 15, 1.0), (80, 8, 0.8)),
@@ -108,23 +106,10 @@ PROFILES = {
         code='BLB', t_min=20.0, t_opt=30.0, t_max=36.0,
         wet_rh=80.0, min_wet_run=4, wet_mid=13.7, wet_slope=1.2,
         moisture_weight=0.4, night_bonus=0.0, rain_wash_mm=0.0,
-        splash_weight=1.0, splash_mid=22.0, splash_slope=6.0, stress_weight=0.0,
+        splash_weight=1.0, splash_mid=22.0, splash_slope=6.0,
         latency_mean=10.0, latency_sd=3.0,
         secondary_rate=0.50, background=0.020, decay=0.080,
         stage_peaks=((60, 20, 1.0),),
-        outbreak_threshold=0.20,
-    ),
-    # Brown spot: wide temperature range with 8 h or more of wetness, and far
-    # worse on water-stressed crops. The classic pattern is a dry spell
-    # followed by humid nights. Strongest from heading onward.
-    'BROWN_SPOT': DiseaseProfile(
-        code='BROWN_SPOT', t_min=16.0, t_opt=27.0, t_max=36.0,
-        wet_rh=90.0, min_wet_run=8, wet_mid=19.0, wet_slope=1.8,
-        moisture_weight=1.0, night_bonus=0.10, rain_wash_mm=0.0,
-        splash_weight=0.0, splash_mid=0.0, splash_slope=1.0, stress_weight=1.3,
-        latency_mean=6.0, latency_sd=2.0,
-        secondary_rate=0.55, background=0.020, decay=0.070,
-        stage_peaks=((85, 15, 1.0), (40, 15, 0.35)),
         outbreak_threshold=0.20,
     ),
 }
@@ -140,18 +125,6 @@ OFF_SEASON_SUSCEPTIBILITY = 0.20
 SEASON_LENGTH_DAYS = 120
 # Extra severity loss once a season's crop has been harvested.
 HARVEST_DECAY = 0.08
-
-# Brown-spot crop stress: 14-day rain minus reference evaporation. A deficit
-# beyond STRESS_MID_MM is a meaningful dry spell for lowland rice. A stressed
-# crop stays predisposed for weeks after the rain returns, so the worst deficit
-# of the last STRESS_MEMORY_DAYS counts. Without that memory, "dry spell then
-# humid nights" could never register, because dry days are rarely wet days.
-STRESS_WINDOW_DAYS = 14
-STRESS_MEMORY_DAYS = 30
-STRESS_MID_MM = 15.0
-STRESS_SLOPE_MM = 8.0
-# Brown spot still occurs on unstressed but nutrient-poor fields.
-STRESS_BASE = 0.50
 
 # ERA5 grid-cell winds are smoothed: the 99th percentile daily maximum here is
 # about 24 km/h. So "storm" means top-percentile wind together with heavy rain,
@@ -232,9 +205,8 @@ def hourly_drivers(hourly, profile):
     return drivers
 
 
-def infection_efficiency(drivers, daily, profile):
-    """Daily infection efficiency (0 to about 1.7) from the hourly drivers,
-    plus the antecedent water balance for stress-driven disease."""
+def infection_efficiency(drivers, profile):
+    """Daily infection efficiency (0 to about 1.7) from the hourly drivers."""
     moisture = _sigmoid((drivers['wet_index'] - profile.wet_mid) / profile.wet_slope)
     run_ok = np.clip(drivers['longest_run'] / profile.min_wet_run, 0.0, 1.0) ** 2
     efficiency = profile.moisture_weight * moisture * run_ok
@@ -248,14 +220,6 @@ def infection_efficiency(drivers, daily, profile):
         efficiency = efficiency + profile.splash_weight * splash * drivers['mean_response']
         storm = (drivers['wind_max'] >= STORM_WIND_KMH) & (drivers['rain'] >= STORM_RAIN_MM)
         efficiency = efficiency + storm * 0.5 * profile.splash_weight
-
-    if profile.stress_weight:
-        by_date = daily.set_index('date')
-        balance = (by_date['precip_sum'] - by_date['et0']).rolling(STRESS_WINDOW_DAYS, min_periods=1).sum()
-        balance = balance.rolling(STRESS_MEMORY_DAYS, min_periods=1).min()
-        balance = balance.reindex(drivers.index).ffill().fillna(0.0)
-        stress = _sigmoid((-balance - STRESS_MID_MM) / STRESS_SLOPE_MM)
-        efficiency = efficiency * (STRESS_BASE + profile.stress_weight * stress)
 
     return efficiency.clip(0.0, 2.0)
 
@@ -339,7 +303,7 @@ def simulate_outbreaks(hourly, daily, location, seed):
     for code, profile in PROFILES.items():
         rng = np.random.default_rng(_seed_for(location, code, seed))
         drivers = hourly_drivers(hourly, profile)
-        efficiency = infection_efficiency(drivers, daily, profile)
+        efficiency = infection_efficiency(drivers, profile)
         efficiency = efficiency.reindex(result['date']).fillna(0.0).to_numpy()
 
         susceptible, harvested = susceptibility(result['date'], profile, rng)
@@ -359,6 +323,17 @@ def simulate_outbreaks(hourly, daily, location, seed):
     return result.iloc[BURN_IN_DAYS:].reset_index(drop=True)
 
 
+LABEL_SUFFIXES = ('infection', 'severity', 'outbreak')
+
+
 def label_columns():
     """Every column simulate_outbreaks adds. None of them may be a feature."""
-    return [f'{code}_{suffix}' for code in PROFILES for suffix in ('infection', 'severity', 'outbreak')]
+    return [f'{code}_{suffix}' for code in PROFILES for suffix in LABEL_SUFFIXES]
+
+
+def is_label_column(column):
+    """True for any simulated-outcome column, including one left behind in a
+    cached training table by a disease the model no longer trains on. Matching
+    on the suffix rather than on PROFILES is what stops a retired disease's
+    severity column from being read as an ordinary feature."""
+    return column.rsplit('_', 1)[-1] in LABEL_SUFFIXES

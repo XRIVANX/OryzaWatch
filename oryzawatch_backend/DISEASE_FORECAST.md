@@ -1,8 +1,8 @@
 # Airborne rice disease forecast
 
-Predicts, day by day for up to 14 days, the outbreak risk of the three airborne or
-splash-dispersed diseases the leaf scanner recognizes: **BLB** (bacterial leaf blight),
-**BLAST** (rice blast) and **BROWN_SPOT**. For an existing hotspot it also predicts
+Predicts, day by day for up to 14 days, the outbreak risk of the two airborne or
+splash-dispersed diseases the leaf scanner recognizes: **BLB** (bacterial leaf blight)
+and **BLAST** (rice blast). For an existing hotspot it also predicts
 **which direction the outbreak is likely to spread**.
 
 Each disease has its own **Random Forest** (scikit-learn) and **XGBoost** model. A soft
@@ -32,8 +32,6 @@ for weather-driven plant-disease early warning when field records are thin.
   24 deg C). Cool dewy nights favour it, and heavy rain washes spores off.
 - **BLB** follows warm humid weather and, above all, wind-driven rain and storms, which
   spread bacteria into leaf wounds.
-- **Brown spot** needs 8 hours or more of wetness and is much worse on crops stressed
-  by a recent dry spell.
 - Each disease has a latency period (about 6 to 10 days), secondary infection from
   existing lesions, decay, crop-stage susceptibility over two cropping seasons a year,
   and random noise for inoculum arrival and scouting error.
@@ -61,18 +59,15 @@ disease is spreading".
 | BLB | current humidity rule | 0.45 | 0.07 | 0.14 | 0.08 | 0.95 |
 | Blast | RF + XGBoost ensemble | 0.87 | 0.47 | 0.51 | 0.40 | 0.71 |
 | Blast | current humidity rule | 0.56 | 0.09 | 0.14 | 0.10 | 0.22 |
-| Brown spot | RF + XGBoost ensemble | 0.83 | 0.53 | 0.53 | 0.45 | 0.65 |
-| Brown spot | current humidity rule | 0.50 | 0.15 | 0.26 | 0.16 | 0.70 |
 
-Outbreak days made up 7 to 16% of the test year, so PR-AUC and F1 are the honest
+Outbreak days made up about 7% of the test year, so PR-AUC and F1 are the honest
 measures; accuracy would flatter any model. The current humidity rule does no better
 than chance. Humidity is high nearly every day in this climate, so on its own it cannot
 separate outbreak days from ordinary ones.
 
 The strongest blast signals are 30 to 60-day averages of humidity and vapour-pressure
 deficit. For BLB they are the season harmonics and the prevailing wind over two to three
-weeks. For brown spot they are the season harmonics and the count of humid days in the
-last 3 weeks. Full metrics, confusion matrices and top features are in
+weeks. Full metrics, confusion matrices and top features are in
 `ai_models/disease_forecast/metadata.json`.
 
 ## Commands
@@ -126,18 +121,18 @@ other climates.
   "latitude": 7.36, "longitude": 125.7,
   "days": [
     {
-      "date": "2026-09-20",
-      "weather": {"t_min": 24.1, "t_max": 31.8, "rh_mean": 86, "precip_mm": 5.1,
-                  "wind_from": "SW", "spread_toward": "NE", "wind_steadiness": 0.32, "...": "..."},
+      "date": "2026-09-23",
+      "weather": {"t_min": 24.1, "t_max": 31.8, "rh_mean": 90, "precip_mm": 4.1,
+                  "wind_from": "NW", "spread_toward": "SE", "wind_steadiness": 0.32, "...": "..."},
       "risks": {
-        "BLB":        {"name": "Bacterial Leaf Blight", "probability": 0.08, "level": "LOW"},
-        "BLAST":      {"name": "Rice Blast",            "probability": 0.11, "level": "LOW"},
-        "BROWN_SPOT": {"name": "Brown Spot",            "probability": 0.14, "level": "HIGH"}
+        "BLB":   {"name": "Bacterial Leaf Blight", "probability": 0.11, "level": "MODERATE"},
+        "BLAST": {"name": "Rice Blast",            "probability": 0.10, "level": "LOW"}
       },
-      "dominant": "BROWN_SPOT"
+      "dominant": "BLB"
     }
   ],
-  "peak": {"BROWN_SPOT": {"date": "2026-09-23", "probability": 0.16, "level": "HIGH"}},
+  "peak": {"BLB":   {"date": "2026-09-23", "probability": 0.11, "level": "MODERATE"},
+           "BLAST": {"date": "2026-09-22", "probability": 0.11, "level": "MODERATE"}},
   "model": {"trained_at": "...", "algorithms": ["..."], "history": "2021-11-10 to 2026-09-10"}
 }
 ```

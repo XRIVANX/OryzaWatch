@@ -12,7 +12,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 
 class Command(BaseCommand):
-    help = 'Forecast BLB / Rice Blast / Brown Spot outbreak risk (and spread direction for a hotspot).'
+    help = 'Forecast BLB / Rice Blast outbreak risk (and spread direction for a hotspot).'
 
     def add_arguments(self, parser):
         where = parser.add_mutually_exclusive_group(required=True)
@@ -86,13 +86,16 @@ class Command(BaseCommand):
         self.stdout.write(self.style.MIGRATE_HEADING(
             f"Disease risk at {result['latitude']:.4f}, {result['longitude']:.4f}"
         ))
-        header = f"{'date':<11} {'BLB':>14} {'BLAST':>14} {'BROWN_SPOT':>14}   {'RH':>4} {'rain':>6} {'wind from':>9}"
+        from analytics.ml.config import DISEASES
+
+        columns = ' '.join(f'{code:>14}' for code in DISEASES)
+        header = f"{'date':<11} {columns}   {'RH':>4} {'rain':>6} {'wind from':>9}"
         self.stdout.write(header)
         self.stdout.write('-' * len(header))
         for day in result['days']:
             cells = ' '.join(
                 f"{day['risks'][c]['probability']:>5.0%} {day['risks'][c]['level']:<8}"
-                for c in ('BLB', 'BLAST', 'BROWN_SPOT')
+                for c in DISEASES
             )
             w = day['weather']
             self.stdout.write(f"{day['date']:<11} {cells}   {w['rh_mean']:>3}% {w['precip_mm']:>5.1f}mm {w['wind_from']:>9}")

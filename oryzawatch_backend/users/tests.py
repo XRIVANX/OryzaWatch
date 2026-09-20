@@ -19,11 +19,28 @@ def detail_of(resp):
 
 
 class RegistrationRoleTestCase(APITestCase):
-    """Public registration must not be able to grant privileged roles."""
+    """Registration is admin-only: there is no public self-registration, and
+    no caller may grant a role above their own.
+
+    Three layers enforce that, and each returns a different status, so the
+    tests below pin all three rather than just the refusal:
+      401  IsAuthenticated  - anonymous callers never reach the view
+      403  the view         - non-admins, and a Kagawad reaching past FARMER
+      400  the serializer   - MAO_ADMIN is not creatable here by anyone
+    """
 
     def setUp(self):
         cache.clear()
         self.url = reverse('auth_register')
+        self.admin = User.objects.create_user(
+            username='admin_reg', password='Password123!', role='MAO_ADMIN',
+            municipality='CARMEN', barangay='Ising')
+        self.kagawad = User.objects.create_user(
+            username='kagawad_reg', password='Password123!', role='KAGAWAD',
+            municipality='CARMEN', barangay='Ising')
+        self.farmer = User.objects.create_user(
+            username='farmer_reg', password='Password123!', role='FARMER',
+            municipality='CARMEN', barangay='Ising')
 
     def _payload(self, role):
         return {
@@ -32,18 +49,47 @@ class RegistrationRoleTestCase(APITestCase):
             'municipality': 'CARMEN', 'barangay': 'Ising',
         }
 
-    def test_cannot_self_register_as_mao_admin(self):
-        resp = self.client.post(self.url, self._payload('MAO_ADMIN'), format='json')
-        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+    def _was_not_created(self, role):
+        return not User.objects.filter(username=f'user_{role.lower()}').exists()
 
-    def test_cannot_self_register_as_kagawad(self):
-        resp = self.client.post(self.url, self._payload('KAGAWAD'), format='json')
-        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+    def test_anonymous_cannot_register_any_role(self):
+        for role in ('MAO_ADMIN', 'KAGAWAD', 'FARMER'):
+            with self.subTest(role=role):
+                resp = self.client.post(self.url, self._payload(role), format='json')
+                self.assertEqual(resp.status_code, status.HTTP_401_UNAUTHORIZED)
+                self.assertTrue(self._was_not_created(role))
 
-    def test_can_self_register_as_farmer(self):
+    def test_farmer_cannot_register_anyone(self):
+        self.client.force_authenticate(self.farmer)
+        resp = self.client.post(self.url, self._payload('FARMER'), format='json')
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(self._was_not_created('FARMER'))
+
+    def test_kagawad_can_register_a_farmer(self):
+        self.client.force_authenticate(self.kagawad)
         resp = self.client.post(self.url, self._payload('FARMER'), format='json')
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         self.assertEqual(User.objects.get(username='user_farmer').role, 'FARMER')
+
+    def test_kagawad_cannot_register_above_farmer(self):
+        self.client.force_authenticate(self.kagawad)
+        for role in ('KAGAWAD', 'MAO_ADMIN'):
+            with self.subTest(role=role):
+                resp = self.client.post(self.url, self._payload(role), format='json')
+                self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+                self.assertTrue(self._was_not_created(role))
+
+    def test_admin_can_register_a_kagawad(self):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.post(self.url, self._payload('KAGAWAD'), format='json')
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(User.objects.get(username='user_kagawad').role, 'KAGAWAD')
+
+    def test_mao_admin_cannot_be_created_even_by_an_admin(self):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.post(self.url, self._payload('MAO_ADMIN'), format='json')
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertTrue(self._was_not_created('MAO_ADMIN'))
 
 class LoginLockoutTestCase(APITestCase):
     def setUp(self):

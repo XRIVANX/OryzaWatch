@@ -8,7 +8,6 @@ class LeafScan(models.Model):
         ('HEALTHY', 'Healthy'),
         ('BLB', 'Bacterial Leaf Blight'),
         ('BLAST', 'Rice Blast'),
-        ('BROWN_SPOT', 'Brown Spot'),
     )
     
     # Links the report back to the User (Farmer/Kagawad) who took it

@@ -63,7 +63,6 @@ FALLBACK_WEATHER = {
 DISEASE_SPREAD_PROFILE = {
     'BLB': {'base_km_per_day': 1.0, 'humidity_threshold': 70.0},
     'BLAST': {'base_km_per_day': 1.5, 'humidity_threshold': 90.0},
-    'BROWN_SPOT': {'base_km_per_day': 0.8, 'humidity_threshold': 80.0},
 }
 
 

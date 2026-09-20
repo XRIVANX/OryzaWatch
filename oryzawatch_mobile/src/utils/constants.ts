@@ -119,7 +119,6 @@ export const DISEASE_LABELS: Record<string, string> = {
   HEALTHY: 'Healthy',
   BLB: 'Bacterial Leaf Blight',
   BLAST: 'Rice Blast',
-  BROWN_SPOT: 'Brown Spot',
 };
 
 // Hotspot status

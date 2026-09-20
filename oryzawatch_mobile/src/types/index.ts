@@ -18,7 +18,7 @@ export interface User {
 }
 
 // From: diagnostics/models.py → LeafScan
-export type DiseaseType = 'HEALTHY' | 'BLB' | 'BLAST' | 'BROWN_SPOT';
+export type DiseaseType = 'HEALTHY' | 'BLB' | 'BLAST';
 
 export interface LesionBox {
   class: string;

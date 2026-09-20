@@ -1,7 +1,7 @@
 """
 Train, evaluate and save the airborne-disease forecast models.
 
-For each disease (BLB, BLAST, BROWN_SPOT):
+For each disease (BLB, BLAST):
 
   1. Split by time. The final `test_days` are held out, with a 21-day
      embargo before them. That way no rolling window or infection latency
@@ -44,7 +44,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import RandomizedSearchCV
 
 from .config import DISEASES, HISTORY_YEARS, METADATA_PATH, MODEL_DIR, RANDOM_SEED
-from .epidemiology import LABEL_MODEL_VERSION, label_columns
+from .epidemiology import LABEL_MODEL_VERSION, is_label_column, label_columns
 from .features import feature_columns
 from .modeling import (
     RF_SEARCH_SPACE,
@@ -61,7 +61,7 @@ TOP_FEATURES = 20
 # The app's current rule-based trigger (analytics/weather.py), kept inline so
 # this module never imports app code: "humidity at or above the disease's
 # threshold means spreading".
-RULE_HUMIDITY_THRESHOLD = {'BLB': 70.0, 'BLAST': 90.0, 'BROWN_SPOT': 80.0}
+RULE_HUMIDITY_THRESHOLD = {'BLB': 70.0, 'BLAST': 90.0}
 
 
 def date_folds(dates, n_splits=CV_SPLITS, embargo_days=EMBARGO_DAYS):
@@ -246,12 +246,15 @@ def train_all(table, *, diseases=DISEASES, test_days=TEST_DAYS, tune=False, tune
               final_refit=True, n_jobs=-1, say=print):
     """Train every disease, save one bundle per disease, and write metadata.json."""
     started = time.time()
-    labels = set(label_columns())
-    features = [column for column in feature_columns(table) if column not in labels]
-    # Guard against a label ever leaking into the inputs.
-    leaked = [column for column in features if any(column.startswith(f'{d}_') for d in DISEASES)]
-    if leaked:
-        raise ValueError(f'Label columns found among features: {leaked}')
+    # Drop every simulated-outcome column, matched by suffix rather than by
+    # name, so a cached table built when another disease was still modelled
+    # cannot smuggle its severity in as a feature.
+    features = [column for column in feature_columns(table) if not is_label_column(column)]
+    retired = [column for column in table.columns
+               if is_label_column(column) and column not in set(label_columns())]
+    if retired:
+        say(f'Ignoring {len(retired)} label column(s) from a disease no longer '
+            f'trained: {", ".join(retired)}')
 
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     say(f'Training on {len(table):,} location-days x {len(features)} features '

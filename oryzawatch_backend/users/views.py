@@ -302,8 +302,6 @@ def list_users(request):
             disease_status = {'CRITICAL': 'Critical', 'AT_RISK': 'At Risk', 'MONITORING': 'Monitoring'}.get(
                 active_hotspot.status, 'Critical'
             )
-        elif latest_scan and latest_scan.detected_disease == 'BROWN_SPOT':
-            disease_status = 'Monitoring'
 
         if latest_scan:
             detected_disease = latest_scan.get_detected_disease_display()

@@ -279,8 +279,8 @@ class DiseaseRiskForecastView(APIView):
         (nothing)                  the requesting farmer's own farm
         &days=1..14                horizon, default 7
 
-    Day-by-day outbreak probability and risk level for BLB, Rice Blast and
-    Brown Spot, plus each disease's peak day.
+    Day-by-day outbreak probability and risk level for BLB and Rice Blast,
+    plus each disease's peak day.
     """
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
