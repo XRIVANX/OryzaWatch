@@ -1,7 +1,11 @@
 import apiClient from './client';
-import type { LeafScan } from '../types';
+import type { LeafScan, RiceVariety } from '../types';
 
 export const diagnosticsApi = {
+  async getVarieties(): Promise<RiceVariety[]> {
+    const res = await apiClient.get<RiceVariety[]>('/api/diagnostics/varieties/');
+    return res.data;
+  },
   async getScanHistory(): Promise<LeafScan[]> {
     const res = await apiClient.get<LeafScan[]>('/api/diagnostics/history/');
     return res.data;
@@ -17,6 +21,10 @@ export const diagnosticsApi = {
     imageType: string;
     latitude: number;
     longitude: number;
+    variety?: number | null;
+    growthStage?: string;
+    symptomNotes?: string;
+    observedOn?: string;
   }): Promise<LeafScan> {
     const formData = new FormData();
     formData.append('image', {
@@ -26,6 +34,10 @@ export const diagnosticsApi = {
     } as any);
     formData.append('latitude', payload.latitude.toString());
     formData.append('longitude', payload.longitude.toString());
+    if (payload.variety != null) formData.append('variety', payload.variety.toString());
+    if (payload.growthStage) formData.append('growth_stage', payload.growthStage);
+    if (payload.symptomNotes) formData.append('symptom_notes', payload.symptomNotes);
+    if (payload.observedOn) formData.append('observed_on', payload.observedOn);
 
     const res = await apiClient.post<LeafScan>('/api/diagnostics/upload/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

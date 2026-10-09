@@ -20,6 +20,23 @@ export interface User {
 // From: diagnostics/models.py → LeafScan
 export type DiseaseType = 'HEALTHY' | 'BLB' | 'BLAST';
 
+export interface RiceVariety {
+  id: number;
+  name: string;
+  alternate_names: string;
+  description: string;
+  maturity_days: number | null;
+  source: string;
+  disease_evidence: {
+    id: number;
+    disease: 'BLB' | 'BLAST';
+    response: string;
+    response_label: string;
+    source: string;
+    notes: string;
+  }[];
+}
+
 export interface LesionBox {
   class: string;
   confidence: number;
@@ -35,7 +52,18 @@ export interface LeafScan {
   image: string;               // URL to uploaded image
   detected_disease: DiseaseType;
   confidence_score: number;    // 0.0 – 1.0
-  probabilities?: Record<string, number> | null;   // only present right after upload
+  probabilities?: Record<string, number> | null;
+  variety?: number | null;
+  variety_name?: string | null;
+  growth_stage?: string;
+  symptom_notes?: string;
+  observed_on?: string | null;
+  verification_status?: 'UNREVIEWED' | 'VERIFIED' | 'INCONCLUSIVE';
+  verified_disease?: DiseaseType | null;
+  verification_method?: string;
+  verification_notes?: string;
+  verified_by_username?: string | null;
+  verified_at?: string | null;
   heatmap?: string | null;              // Grad-CAM overlay URL, once the classifier is trained
   segmentation_mask?: string | null;    // lesion overlay URL, once train_leaf_segmentation is trained
   affected_area_ratio?: number | null;  // 0.0 - 1.0, once train_leaf_segmentation is trained
