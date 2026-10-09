@@ -1,0 +1,24 @@
+2:19:58 AM [vite] (client) [console.error] Session verification failed, logging out: AxiosError: Request failed with status code 401
+    at settle (http://localhost:5173/node_modules/.vite/deps/axios.js?v=e1eb169a:1838:14)
+    at XMLHttpRequest.onloadend (http://localhost:5173/node_modules/.vite/deps/axios.js?v=e1eb169a:2231:4)
+2:21:45 AM [vite] (client) [Unhandled error] TypeError: Cannot read properties of undefined (reading '_leaflet_pos')
+ > getPosition node_modules/leaflet/dist/leaflet-src.js:2563:13
+ > NewClass._getMapPanePos node_modules/leaflet/dist/leaflet-src.js:4601:11
+ > NewClass._getNewPixelOrigin node_modules/leaflet/dist/leaflet-src.js:4618:68
+ > NewClass._move node_modules/leaflet/dist/leaflet-src.js:4337:29
+ > NewClass._onZoomTransitionEnd node_modules/leaflet/dist/leaflet-src.js:4839:9
+
+2:21:46 AM [vite] (client) [Unhandled error] TypeError: Cannot read properties of undefined (reading '_leaflet_pos')
+ > getPosition node_modules/leaflet/dist/leaflet-src.js:2563:13
+ > NewClass._getMapPanePos node_modules/leaflet/dist/leaflet-src.js:4601:11
+ > NewClass._getNewPixelOrigin node_modules/leaflet/dist/leaflet-src.js:4618:68
+ > NewClass._move node_modules/leaflet/dist/leaflet-src.js:4337:29
+ > NewClass._onZoomTransitionEnd node_modules/leaflet/dist/leaflet-src.js:4839:9
+
+2:22:57 AM [vite] (client) [Unhandled error] TypeError: Cannot read properties of undefined (reading '_leaflet_pos')
+ > getPosition node_modules/leaflet/dist/leaflet-src.js:2563:13
+ > NewClass._getMapPanePos node_modules/leaflet/dist/leaflet-src.js:4601:11
+ > NewClass._getNewPixelOrigin node_modules/leaflet/dist/leaflet-src.js:4618:68
+ > NewClass._move node_modules/leaflet/dist/leaflet-src.js:4337:29
+ > NewClass._onZoomTransitionEnd node_modules/leaflet/dist/leaflet-src.js:4839:9
+

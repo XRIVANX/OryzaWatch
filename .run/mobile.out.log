@@ -1,0 +1,44 @@
+Starting project at C:\Users\Rivan\OryzaWatch\oryzawatch_mobile
+Metro is running in CI mode, reloads are disabled. Remove CI=true to enable watch mode.
+Starting Metro Bundler
+Waiting on http://localhost:8081
+Logs for your project will appear below.
+Android .\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+| (node:13504) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+Android .\index.ts ▓░░░░░░░░░░░░░░░ 11.1% (  6/102)
+Android .\index.ts ▓░░░░░░░░░░░░░░░ 11.1% ( 25/150)
+| (node:32892) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:33864) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:6268) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:35220) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:25776) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:30864) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:29096) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:25396) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+| (node:37740) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+| (Use `node --trace-warnings ...` to show where the warning was created)
+Android .\index.ts ▓▓▓▓░░░░░░░░░░░░ 29.3% (247/459)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓░░░░░░ 66.9% (601/772)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓▓▓▓░░░ 85.5% ( 954/1032)
+Android .\index.ts ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.8% (1237/1238)
+Android Bundled 23175ms index.ts (1247 modules)
+ ERROR  Project is incompatible with this version of Expo Go
+
+• The installed version of Expo Go is for SDK 57.
+• The project you opened uses SDK 54.
+
+How to fix this error:
+Either upgrade this project to SDK 57 or install an older version of Expo Go that is compatible with your project.
+
+<a href='https://docs.expo.dev/workflow/upgrading-expo-sdk-walkthrough/'>Learn how to upgrade to SDK 57.</a>
+
+<a href='https://expo.dev/go?sdkVersion=54&platform=android&device=true'>Learn how to install Expo Go for SDK 54</a>.
