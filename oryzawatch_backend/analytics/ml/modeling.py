@@ -34,7 +34,7 @@ def make_random_forest(n_jobs=-1, **params):
     ])
 
 
-def make_xgboost(pos_weight=1.0, n_jobs=-1, **params):
+def make_xgboost(pos_weight=1.0, n_jobs=-1, device='cpu', **params):
     settings = dict(
         n_estimators=500,
         learning_rate=0.04,
@@ -47,6 +47,7 @@ def make_xgboost(pos_weight=1.0, n_jobs=-1, **params):
         objective='binary:logistic',
         eval_metric='aucpr',
         tree_method='hist',
+        device=device,
         n_jobs=n_jobs,
         random_state=RANDOM_SEED,
     )
