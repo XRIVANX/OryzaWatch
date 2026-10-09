@@ -4,7 +4,9 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.views.static import serve
 from users.views import register_user, login_user, get_user_profile, admin_exists, activity_log_list, initial_setup, list_users
-from diagnostics.views import LeafScanCreateView, LeafScanListView 
+from diagnostics.views import (LeafScanCreateView, LeafScanListView, RiceVarietyListView,
+                               LeafScanReviewQueueView, LeafScanVerifyView, RiceVarietyDetailView,
+                               VarietyEvidenceCreateView, VarietyEvidenceDetailView, VerifiedScanExportView)
 # Import your new analytics views here!
 from analytics.views import (
     ActiveHotspotListCreateView, HotspotDetailView, HotspotBroadcastView, HotspotPredictView, DashboardStatsView,
@@ -33,6 +35,13 @@ urlpatterns = [
     # Core Diagnostics Scan Endpoints
     path('api/diagnostics/upload/', LeafScanCreateView.as_view(), name='upload_scan'),
     path('api/diagnostics/history/', LeafScanListView.as_view(), name='scan_history'),
+    path('api/diagnostics/varieties/', RiceVarietyListView.as_view(), name='rice_variety_list'),
+    path('api/diagnostics/varieties/<int:pk>/', RiceVarietyDetailView.as_view(), name='rice_variety_detail'),
+    path('api/diagnostics/varieties/<int:pk>/evidence/', VarietyEvidenceCreateView.as_view(), name='variety_evidence_create'),
+    path('api/diagnostics/variety-evidence/<int:pk>/', VarietyEvidenceDetailView.as_view(), name='variety_evidence_detail'),
+    path('api/diagnostics/review-queue/', LeafScanReviewQueueView.as_view(), name='scan_review_queue'),
+    path('api/diagnostics/verified-data/', VerifiedScanExportView.as_view(), name='verified_scan_export'),
+    path('api/diagnostics/scans/<int:pk>/verify/', LeafScanVerifyView.as_view(), name='scan_verify'),
     
     # Core Spatiotemporal Analytics Endpoints!
     path('api/analytics/hotspots/', ActiveHotspotListCreateView.as_view(), name='active_hotspots'),

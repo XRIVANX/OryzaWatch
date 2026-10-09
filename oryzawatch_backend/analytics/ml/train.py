@@ -140,7 +140,7 @@ def _importances(rf, xgb, features):
 
 
 def train_disease(table, disease, features, *, test_days=TEST_DAYS, tune=False, tune_iter=20,
-                  final_refit=True, n_jobs=-1, say=print):
+                  final_refit=True, n_jobs=-1, xgb_device='cpu', say=print):
     target = f'{disease}_outbreak'
     dates = pd.DatetimeIndex(table['date'])
     cutoff = dates.max() - pd.Timedelta(days=test_days)
@@ -163,10 +163,10 @@ def train_disease(table, disease, features, *, test_days=TEST_DAYS, tune=False, 
         say('    tuning Random Forest...')
         rf_params = _tune(make_random_forest(n_jobs), RF_SEARCH_SPACE, X_train, y_train, folds, tune_iter, n_jobs, say)
         say('    tuning XGBoost...')
-        xgb_params = _tune(make_xgboost(pos_weight, n_jobs), XGB_SEARCH_SPACE, X_train, y_train, folds, tune_iter, n_jobs, say)
+        xgb_params = _tune(make_xgboost(pos_weight, n_jobs, device=xgb_device), XGB_SEARCH_SPACE, X_train, y_train, folds, tune_iter, n_jobs, say)
 
     rf_template = make_random_forest(n_jobs, **rf_params)
-    xgb_template = make_xgboost(pos_weight, n_jobs, **xgb_params)
+    xgb_template = make_xgboost(pos_weight, n_jobs, device=xgb_device, **xgb_params)
 
     # Walk-forward out-of-fold predictions -> ensemble weights + threshold.
     say(f'    walk-forward validation over {len(folds)} folds...')
@@ -243,7 +243,7 @@ def train_disease(table, disease, features, *, test_days=TEST_DAYS, tune=False, 
 
 
 def train_all(table, *, diseases=DISEASES, test_days=TEST_DAYS, tune=False, tune_iter=20,
-              final_refit=True, n_jobs=-1, say=print):
+              final_refit=True, n_jobs=-1, xgb_device='cpu', say=print, output_dir=None, data_metadata=None):
     """Train every disease, save one bundle per disease, and write metadata.json."""
     started = time.time()
     # Drop every simulated-outcome column, matched by suffix rather than by
@@ -256,7 +256,9 @@ def train_all(table, *, diseases=DISEASES, test_days=TEST_DAYS, tune=False, tune
         say(f'Ignoring {len(retired)} label column(s) from a disease no longer '
             f'trained: {", ".join(retired)}')
 
-    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    from pathlib import Path
+    model_dir = Path(output_dir) if output_dir is not None else MODEL_DIR
+    model_dir.mkdir(parents=True, exist_ok=True)
     say(f'Training on {len(table):,} location-days x {len(features)} features '
         f'({table["location"].nunique()} locations, '
         f'{table["date"].min():%Y-%m-%d} to {table["date"].max():%Y-%m-%d})')
@@ -265,16 +267,16 @@ def train_all(table, *, diseases=DISEASES, test_days=TEST_DAYS, tune=False, tune
     for disease in diseases:
         bundle, summary = train_disease(
             table, disease, features, test_days=test_days, tune=tune, tune_iter=tune_iter,
-            final_refit=final_refit, n_jobs=n_jobs, say=say,
+            final_refit=final_refit, n_jobs=n_jobs, xgb_device=xgb_device, say=say,
         )
-        path = MODEL_DIR / f'{disease}.joblib'
+        path = model_dir / f'{disease}.joblib'
         joblib.dump(bundle, path, compress=3)
         summary['artifact'] = path.name
         results[disease] = summary
 
     metadata = {
         'model': 'OryzaWatch airborne rice disease forecast',
-        'algorithms': ['RandomForestClassifier (scikit-learn)', 'XGBClassifier (xgboost)', 'weighted soft vote'],
+        'algorithms': ['RandomForestClassifier (scikit-learn CPU)', f'XGBClassifier (xgboost {xgb_device})', 'weighted soft vote'],
         'trained_at': datetime.now(timezone.utc).isoformat(),
         'training_seconds': round(time.time() - started, 1),
         'data': {
@@ -304,6 +306,8 @@ def train_all(table, *, diseases=DISEASES, test_days=TEST_DAYS, tune=False, tune
             'numpy': np.__version__,
         },
     }
-    METADATA_PATH.write_text(json.dumps(metadata, indent=2, default=str), encoding='utf-8')
-    say(f'Saved models + metadata to {MODEL_DIR} in {metadata["training_seconds"]}s')
+    if data_metadata:
+        metadata['data'].update(data_metadata)
+    (model_dir / METADATA_PATH.name).write_text(json.dumps(metadata, indent=2, default=str), encoding='utf-8')
+    say(f'Saved models + metadata to {model_dir} in {metadata["training_seconds"]}s')
     return metadata
