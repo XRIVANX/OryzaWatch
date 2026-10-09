@@ -31,7 +31,13 @@ import {
   warmUpLeafModel,
   type LocalDiagnosis,
 } from '../../ml/leafModel';
-import type { LeafScan } from '../../types';
+import type { LeafScan, RiceVariety } from '../../types';
+
+const GROWTH_STAGES = [
+  ['', 'Unknown'], ['SEEDLING', 'Seedling'], ['TILLERING', 'Tillering'],
+  ['PANICLE_INITIATION', 'Panicle initiation'], ['BOOTING', 'Booting'],
+  ['FLOWERING', 'Flowering'], ['GRAIN_FILLING', 'Grain filling'], ['MATURITY', 'Maturity'],
+] as const;
 
 const DISEASE_COLOR: Record<string, string> = {
   HEALTHY: COLORS.success,
@@ -56,6 +62,11 @@ export default function SubmitReportScreen() {
   const [imageName, setImageName] = useState('leaf.jpg');
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [notes, setNotes] = useState('');
+  const [varieties, setVarieties] = useState<RiceVariety[]>([]);
+  const [varietyId, setVarietyId] = useState<number | null>(null);
+  const [varietyError, setVarietyError] = useState(false);
+  const [growthStage, setGrowthStage] = useState('');
+  const [observedOn, setObservedOn] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -76,6 +87,16 @@ export default function SubmitReportScreen() {
   useEffect(() => {
     if (onDeviceSupported) warmUpLeafModel();
   }, [onDeviceSupported]);
+
+  useEffect(() => {
+    let active = true;
+    diagnosticsApi.getVarieties().then((data) => {
+      if (active) setVarieties(data);
+    }).catch(() => {
+      if (active) setVarietyError(true);
+    });
+    return () => { active = false; };
+  }, []);
 
   const runLocalDiagnosis = async (uri: string | null, base64: string | null) => {
     if (!uri || !onDeviceEnabled || !onDeviceSupported) return;
@@ -217,8 +238,11 @@ export default function SubmitReportScreen() {
     setReportStatus('idle');
     try {
       const locPerm = await Location.requestForegroundPermissionsAsync();
-      let lat = 7.3047, lng = 125.6839;
-      if (locPerm.status === 'granted') {
+      if (locPerm.status !== 'granted') {
+        throw new Error('Allow location access to save the sample at its actual location.');
+      }
+      let lat: number, lng: number;
+      {
         const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         // The backend stores these as DecimalField(decimal_places=6) and rejects
         // anything more precise; raw GPS readings often come back with more
@@ -233,6 +257,10 @@ export default function SubmitReportScreen() {
         imageType: upload.type,
         latitude: lat,
         longitude: lng,
+        variety: varietyId,
+        growthStage,
+        symptomNotes: notes.trim(),
+        observedOn: observedOn.trim(),
       });
       setServerDx(scan);
       setSubmitted(true);
@@ -414,6 +442,33 @@ export default function SubmitReportScreen() {
         )}
 
         <Text style={[styles.sectionTitle, { marginTop: 24 }]}>FIELD OBSERVATIONS (OPTIONAL)</Text>
+        <Text style={styles.sectionDesc}>Record what you know. Unknown variety or growth stage is allowed.</Text>
+        <Text style={styles.odTitle}>Rice variety</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginVertical: 10 }}>
+          {[{ id: null, name: 'Unknown' }, ...varieties].map((variety) => (
+            <TouchableOpacity key={variety.id ?? 'unknown'}
+              style={[styles.choice, varietyId === variety.id && styles.choiceSelected]}
+              onPress={() => setVarietyId(variety.id)}>
+              <Text style={styles.choiceText}>{variety.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        {varietyError ? <Text style={styles.sectionDesc}>Variety list unavailable. You can still save an unknown variety.</Text>
+          : varieties.length === 0 && <Text style={styles.sectionDesc}>Your office can add varieties as data becomes available.</Text>}
+        <Text style={styles.odTitle}>Growth stage</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginVertical: 10 }}>
+          {GROWTH_STAGES.map(([value, label]) => (
+            <TouchableOpacity key={value || 'unknown'}
+              style={[styles.choice, growthStage === value && styles.choiceSelected]}
+              onPress={() => setGrowthStage(value)}>
+              <Text style={styles.choiceText}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <Text style={styles.odTitle}>Date inspected</Text>
+        <TextInput style={[styles.notesInput, { minHeight: 0, marginTop: 10 }]}
+          value={observedOn} onChangeText={setObservedOn} placeholder="YYYY-MM-DD, or leave unknown"
+          placeholderTextColor={COLORS.textMuted} autoCapitalize="none" maxLength={10} />
         <TextInput
           style={styles.notesInput}
           value={notes}
@@ -608,6 +663,10 @@ const styles = StyleSheet.create({
     minHeight: 110,
     marginBottom: 16,
   },
+  choice: { paddingHorizontal: 12, paddingVertical: 10, marginRight: 6, marginBottom: 6,
+    borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.white },
+  choiceSelected: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryBg },
+  choiceText: { color: COLORS.textPrimary, fontSize: 12, fontWeight: '600' },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',

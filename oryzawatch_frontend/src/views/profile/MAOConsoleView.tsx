@@ -3,19 +3,23 @@ import FarmerTable from '../../components/profile/FarmerTable';
 import KagawadTable from '../../components/profile/KagawadTable';
 import RegisterUserForm from '../../components/profile/RegisterUserForm';
 import ActivityLogTable from '../../components/profile/ActivityLogTable';
+import VarietyDataPanel from '../../components/profile/VarietyDataPanel';
+import ScanReviewPanel from '../../components/profile/ScanReviewPanel';
 import type { User } from '../../types';
 
 interface MAOConsoleViewProps {
   user: User;
 }
 
-type TabId = 'farmers' | 'kagawad' | 'register' | 'logs';
+type TabId = 'farmers' | 'kagawad' | 'register' | 'logs' | 'varieties' | 'scan-review';
 
 const TABS: { id: TabId; label: string; icon: string; roles: string[] }[] = [
   { id: 'farmers',  label: 'Farmers',           icon: '🌾', roles: ['MAO_ADMIN', 'KAGAWAD'] },
   { id: 'kagawad',  label: 'SK / Agri-Kagawad', icon: '🎖️', roles: ['MAO_ADMIN'] },
   { id: 'register', label: 'Register User',     icon: '➕', roles: ['MAO_ADMIN', 'KAGAWAD'] },
   { id: 'logs',     label: 'Activity Logs',      icon: '📋', roles: ['MAO_ADMIN'] },
+  { id: 'varieties', label: 'Rice Varieties', icon: '🌱', roles: ['MAO_ADMIN'] },
+  { id: 'scan-review', label: 'Scan Review', icon: '🔎', roles: ['MAO_ADMIN', 'KAGAWAD'] },
 ];
 
 export const MAOConsoleView: React.FC<MAOConsoleViewProps> = ({ user }) => {
@@ -54,6 +58,7 @@ export const MAOConsoleView: React.FC<MAOConsoleViewProps> = ({ user }) => {
           borderBottom: '1px solid var(--border)',
           backgroundColor: '#ffffff',
           flexShrink: 0,
+          overflowX: 'auto',
         }}
       >
         {visibleTabs.map(tab => {
@@ -94,6 +99,8 @@ export const MAOConsoleView: React.FC<MAOConsoleViewProps> = ({ user }) => {
         {safeTab === 'kagawad'  && <KagawadTable onRegisterClick={() => setActiveTab('register')} />}
         {safeTab === 'register' && <RegisterUserForm adminUser={user} />}
         {safeTab === 'logs'     && <ActivityLogTable />}
+        {safeTab === 'varieties' && <VarietyDataPanel />}
+        {safeTab === 'scan-review' && <ScanReviewPanel canExport={user.role === 'MAO_ADMIN'} />}
       </div>
     </div>
   );

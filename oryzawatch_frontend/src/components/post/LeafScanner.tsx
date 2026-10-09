@@ -34,6 +34,11 @@ interface LeafScannerProps {
   onScanSuccess?: () => void;
 }
 
+const GROWTH_STAGES = [
+  ['SEEDLING', 'Seedling'], ['TILLERING', 'Tillering'], ['PANICLE_INITIATION', 'Panicle initiation'],
+  ['BOOTING', 'Booting'], ['FLOWERING', 'Flowering'], ['GRAIN_FILLING', 'Grain filling'], ['MATURITY', 'Maturity'],
+];
+
 export const LeafScanner: React.FC<LeafScannerProps> = ({ onScanSuccess }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview]           = useState<string | null>(null);
@@ -41,12 +46,36 @@ export const LeafScanner: React.FC<LeafScannerProps> = ({ onScanSuccess }) => {
   const [stageIndex, setStageIndex]     = useState<number>(0);
   const [progress, setProgress]         = useState<number>(0);
   const [result, setResult]             = useState<ScanResult | null>(null);
-  const [coords]                        = useState({ latitude: '7.4483', longitude: '125.8094' });
+  const [coords, setCoords]             = useState({ latitude: '', longitude: '' });
+  const [varieties, setVarieties]       = useState<{ id: number; name: string }[]>([]);
+  const [varietyId, setVarietyId]       = useState('');
+  const [growthStage, setGrowthStage]   = useState('');
+  const [symptomNotes, setSymptomNotes] = useState('');
+  const [observedOn, setObservedOn]     = useState('');
+  const [varietyError, setVarietyError] = useState(false);
   const fileInputRef                    = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let active = true;
+    API.get('diagnostics/varieties/').then(({ data }) => {
+      if (active) setVarieties(data);
+    }).catch(() => { if (active) setVarietyError(true); });
+    return () => { active = false; };
+  }, []);
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setResult({ type: 'error', message: 'Location is unavailable. Enter the sample coordinates below.' });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(({ coords: location }) => {
+      setCoords({ latitude: location.latitude.toFixed(6), longitude: location.longitude.toFixed(6) });
+    }, () => setResult({ type: 'error', message: 'Location access failed. Enter the sample coordinates below.' }));
+  };
 
   // Animate stages during scan loading
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval> | undefined;
     if (loading) {
       setStageIndex(0);
       setProgress(15);
@@ -75,16 +104,25 @@ export const LeafScanner: React.FC<LeafScannerProps> = ({ onScanSuccess }) => {
       fileInputRef.current?.click();
       return;
     }
+    if (!coords.latitude.trim() || !coords.longitude.trim()) {
+      setResult({ type: 'error', message: 'Enter the sample location or use your current location before scanning.' });
+      return;
+    }
     setLoading(true);
     setResult(null);
     const formData = new FormData();
     formData.append('image', selectedFile);
     formData.append('latitude', coords.latitude);
     formData.append('longitude', coords.longitude);
+    if (varietyId) formData.append('variety', varietyId);
+    if (growthStage) formData.append('growth_stage', growthStage);
+    if (symptomNotes) formData.append('symptom_notes', symptomNotes);
+    if (observedOn) formData.append('observed_on', observedOn);
 
     try {
       const response = await API.post('diagnostics/upload/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000,
       });
       // Delay to let user enjoy the scanning analysis telemetry
       setTimeout(() => {
@@ -105,7 +143,7 @@ export const LeafScanner: React.FC<LeafScannerProps> = ({ onScanSuccess }) => {
       setTimeout(() => {
         setResult({
           type: 'error',
-          message: err.response?.data?.detail || 'Specimen diagnostic analysis failed.',
+          message: err.response?.data?.detail || (err.response?.data ? JSON.stringify(err.response.data) : 'Specimen diagnostic analysis failed.'),
         });
         setLoading(false);
       }, 600);
@@ -129,6 +167,40 @@ export const LeafScanner: React.FC<LeafScannerProps> = ({ onScanSuccess }) => {
         onChange={handleFileChange}
         style={{ display: 'none' }}
       />
+
+      <div style={{ display: 'grid', gap: '12px', padding: '16px', border: '1px solid var(--border)', borderRadius: '12px', background: '#fff' }}>
+        <strong>Sample details</strong>
+        <label>Rice variety
+          <select value={varietyId} onChange={(e) => setVarietyId(e.target.value)} disabled={loading} style={{ display: 'block', width: '100%', padding: '8px' }}>
+            <option value="">Unknown variety</option>
+            {varieties.map((variety) => <option key={variety.id} value={variety.id}>{variety.name}</option>)}
+          </select>
+        </label>
+        {varietyError && <small>Variety list unavailable. You can still save an unknown variety.</small>}
+        {!varietyError && varieties.length === 0 && <small>Your office can add varieties as data becomes available.</small>}
+        <label>Growth stage
+          <select value={growthStage} onChange={(e) => setGrowthStage(e.target.value)} disabled={loading} style={{ display: 'block', width: '100%', padding: '8px' }}>
+            <option value="">Unknown stage</option>
+            {GROWTH_STAGES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        <label>Date inspected (optional)
+          <input type="date" value={observedOn} onChange={(e) => setObservedOn(e.target.value)} disabled={loading} style={{ display: 'block', padding: '8px' }} />
+        </label>
+        <label>Symptoms and field notes (optional)
+          <textarea value={symptomNotes} onChange={(e) => setSymptomNotes(e.target.value)} disabled={loading} rows={3} style={{ display: 'block', width: '100%', padding: '8px', boxSizing: 'border-box' }} />
+        </label>
+        <button type="button" onClick={useCurrentLocation} disabled={loading}>Use current location</button>
+        <small>Use the location where the sample was taken.</small>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <label style={{ flex: 1 }}>Latitude
+            <input type="number" step="0.000001" min={-90} max={90} value={coords.latitude} onChange={(e) => setCoords({ ...coords, latitude: e.target.value })} disabled={loading} style={{ display: 'block', width: '100%', boxSizing: 'border-box' }} />
+          </label>
+          <label style={{ flex: 1 }}>Longitude
+            <input type="number" step="0.000001" min={-180} max={180} value={coords.longitude} onChange={(e) => setCoords({ ...coords, longitude: e.target.value })} disabled={loading} style={{ display: 'block', width: '100%', boxSizing: 'border-box' }} />
+          </label>
+        </div>
+      </div>
 
       {/* Main Scanner Viewport Frame */}
       <div
