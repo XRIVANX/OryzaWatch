@@ -181,10 +181,55 @@ that around (`spread_toward`), because spores travel downwind.
 - The saved models are joblib pickles. They are loaded only from the fixed
   `ai_models/disease_forecast/` directory and never from anything a user uploads.
 
+## Station export training (13 October 2026)
+
+The semicolon-delimited weather exports can be imported with:
+
+```powershell
+..\.venv\Scripts\python.exe manage.py train_station_forecast --directory "C:\Users\Rivan\Downloads\WeatherDataset\Datasets (Requerme, Ivan)" --jobs 4
+```
+
+Use `--prepare-only` to audit and build data without training, and `--use-prepared`
+to retrain the prepared table. This command runs offline without a database connection.
+It writes `datasets/weather/station_exports/training.csv` and `data_audit.json`, and
+saves both disease bundles and evaluation metadata under
+`ai_models/disease_forecast/station_candidate/`. It does not replace active bundles.
+
+The initial run audited 51 files. Davao PAGASA and Carmen Ising contributed 3,532
+hybrid location-days. The other 49 files lacked full weather variables or sufficient
+continuous history. Cached Open-Meteo history within 1 km fills missing station
+measurements, with the measured and substituted hour counts recorded per variable.
+For example, Davao temperature observations covered 30,327 of 43,824 cached hours;
+Carmen covered 3,629 of 43,824. These are supplemented station records, not entirely
+measured weather histories. Unsupported stations are split at gaps rather than
+interpolated. Original source files are unchanged and SHA-256 hashes are recorded.
+
+Hourly aggregation requires 80% coverage at the inferred observation interval.
+Minute rainfall is summed, overlapping one-hour rain totals are excluded, m/s winds
+are converted to km/h, and wind directions use circular averages. Dew point is
+derived from temperature and humidity. Rainfall interval semantics and sensor heights
+still require provider confirmation. Live prediction inputs remain Open-Meteo.
+
+The combined table contains 22,958 location-days across 13 locations, from 2 March
+2021 to 10 September 2026. Hybrid Carmen rows replace overlapping regional Carmen
+rows, avoiding duplicate examples. Training retains the existing 195 predictors,
+walk-forward validation, final 365-day holdout, and 21-day embargo.
+
+| Candidate | Held-out F1 | Held-out average precision |
+|---|---:|---:|
+| Bacterial Leaf Blight | 0.365 | 0.309 |
+| Rice Blast | 0.503 | 0.472 |
+
+These scores measure recovery of simulated disease labels, not accuracy against
+confirmed outbreaks. The evaluation population differs from the previous training
+run, so the scores do not establish that the candidates improve on active models.
+The candidates were retained for evaluation; active models were preserved.
+
 ## Tests
 
 ```powershell
 ..\.venv\Scripts\python.exe manage.py test analytics.tests_disease_forecast
+..\.venv\Scripts\python.exe -m unittest analytics.test_station_import
 ```
 
 No network access or trained model needed. The tests cover label-free features,
